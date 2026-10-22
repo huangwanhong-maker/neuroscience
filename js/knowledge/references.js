@@ -1,0 +1,85 @@
+// The references of the knowledge base: the standard texts, the atlases this domain
+// draws, and the papers that the entries cite for a particular finding. Each paper's
+// authors, year, title, journal, volume, pages and DOI were checked against Crossref
+// on 2026-10-23. The strings are HTML, as the application shows them.
+
+const doi = (d) => ` <a href="https://doi.org/${d}" target="_blank" rel="noopener">doi:${d}</a>`;
+
+export const REFERENCES = {
+  // ---- standard texts --------------------------------------------------------------------
+  FIPAT2017: 'Federative International Programme for Anatomical Terminology (2017), <i>Terminologia Neuroanatomica</i>, FIPAT.library.dal.ca.',
+  Kandel2021: 'Kandel, E. R., Koester, J. D., Mack, S. H. and Siegelbaum, S. A., eds (2021), <i>Principles of Neural Science</i>, 6th ed., McGraw Hill.',
+  Standring2020: 'Standring, S., ed. (2020), <i>Gray’s Anatomy: The Anatomical Basis of Clinical Practice</i>, 42nd ed., Elsevier.',
+  Haines2018: 'Haines, D. E. and Mihailoff, G. A., eds (2018), <i>Fundamental Neuroscience for Basic and Clinical Applications</i>, 5th ed., Elsevier.',
+  Purves2018: 'Purves, D., Augustine, G. J., Fitzpatrick, D. et al., eds (2018), <i>Neuroscience</i>, 6th ed., Oxford University Press.',
+  Vanderah2021: 'Vanderah, T. W. and Gould, D. J. (2021), <i>Nolte’s The Human Brain: An Introduction to its Functional Anatomy</i>, 8th ed., Elsevier.',
+  Blumenfeld2021: 'Blumenfeld, H. (2021), <i>Neuroanatomy through Clinical Cases</i>, 3rd ed., Oxford University Press.',
+  Nieuwenhuys2008: 'Nieuwenhuys, R., Voogd, J. and van Huijzen, C. (2008), <i>The Human Central Nervous System</i>, 4th ed., Springer.',
+  Duvernoy1999: 'Duvernoy, H. M. (1999), <i>The Human Brain: Surface, Blood Supply, and Three-Dimensional Sectional Anatomy</i>, 2nd ed., Springer.',
+  Duvernoy2013: 'Duvernoy, H. M., Cattin, F. and Risold, P.-Y. (2013), <i>The Human Hippocampus: Functional Anatomy, Vascularization and Serial Sections with MRI</i>, 4th ed., Springer.',
+  Mai2016: 'Mai, J. K., Majtanik, M. and Paxinos, G. (2016), <i>Atlas of the Human Brain</i>, 4th ed., Academic Press.',
+
+  // ---- arterial territories and white matter -----------------------------------------------
+  Tatu1996: 'Tatu, L., Moulin, T., Bogousslavsky, J. and Duvernoy, H. (1996), Arterial territories of human brain: brainstem and cerebellum, <i>Neurology</i> 47, 1125–1135.' + doi('10.1212/wnl.47.5.1125'),
+  Tatu1998: 'Tatu, L., Moulin, T., Bogousslavsky, J. and Duvernoy, H. (1998), Arterial territories of the human brain: cerebral hemispheres, <i>Neurology</i> 50, 1699–1708.' + doi('10.1212/wnl.50.6.1699'),
+  Catani2008: 'Catani, M. and Thiebaut de Schotten, M. (2008), A diffusion tensor imaging tractography atlas for virtual in vivo dissections, <i>Cortex</i> 44, 1105–1132.' + doi('10.1016/j.cortex.2008.05.004'),
+
+  // ---- the atlases drawn ---------------------------------------------------------------------
+  Fischl2002: 'Fischl, B. et al. (2002), Whole brain segmentation: automated labeling of neuroanatomical structures in the human brain, <i>Neuron</i> 33, 341–355.' + doi('10.1016/s0896-6273(02)00569-x'),
+  Makris2006: 'Makris, N. et al. (2006), Decreased volume of left and total anterior insular lobule in schizophrenia, <i>Schizophrenia Research</i> 83, 155–171 (the Harvard–Oxford cortical atlas).' + doi('10.1016/j.schres.2005.11.020'),
+  Bazin2020: 'Bazin, P.-L., Alkemade, A., Mulder, M. J., Henry, A. G. and Forstmann, B. U. (2020), Multi-contrast anatomical subcortical structures parcellation, <i>eLife</i> 9, e59430.' + doi('10.7554/elife.59430'),
+  Najdenovska2018: 'Najdenovska, E. et al. (2018), In-vivo probabilistic atlas of human thalamic nuclei based on diffusion-weighted magnetic resonance imaging, <i>Scientific Data</i> 5, 180270.' + doi('10.1038/sdata.2018.270'),
+  Guevara2012: 'Guevara, P. et al. (2012), Automatic fiber bundle segmentation in massive tractography datasets using a multi-subject bundle atlas, <i>NeuroImage</i> 61, 1083–1099.' + doi('10.1016/j.neuroimage.2012.02.071'),
+  Amunts2020: 'Amunts, K., Mohlberg, H., Bludau, S. and Zilles, K. (2020), Julich-Brain: a 3D probabilistic atlas of the human brain’s cytoarchitecture, <i>Science</i> 369, 988–992.' + doi('10.1126/science.abb4588'),
+
+  // ---- papers cited for particular findings --------------------------------------------------
+  Adolphs1994: 'Adolphs, R., Tranel, D., Damasio, H. and Damasio, A. (1994), Impaired recognition of emotion in facial expressions following bilateral damage to the human amygdala, <i>Nature</i> 372, 669–672.' + doi('10.1038/372669a0'),
+  Alexander1986: 'Alexander, G. E., DeLong, M. R. and Strick, P. L. (1986), Parallel organization of functionally segregated circuits linking basal ganglia and cortex, <i>Annual Review of Neuroscience</i> 9, 357–381.' + doi('10.1146/annurev.ne.09.030186.002041'),
+  Azevedo2009: 'Azevedo, F. A. C. et al. (2009), Equal numbers of neuronal and nonneuronal cells make the human brain an isometrically scaled-up primate brain, <i>Journal of Comparative Neurology</i> 513, 532–541.' + doi('10.1002/cne.21974'),
+  Bechara1994: 'Bechara, A., Damasio, A. R., Damasio, H. and Anderson, S. W. (1994), Insensitivity to future consequences following damage to human prefrontal cortex, <i>Cognition</i> 50, 7–15.' + doi('10.1016/0010-0277(94)90018-3'),
+  Berthier1988: 'Berthier, M., Starkstein, S. and Leiguarda, R. (1988), Asymbolia for pain: a sensory-limbic disconnection syndrome, <i>Annals of Neurology</i> 24, 41–49.' + doi('10.1002/ana.410240109'),
+  Blanke2002: 'Blanke, O., Ortigue, S., Landis, T. and Seeck, M. (2002), Stimulating illusory own-body perceptions, <i>Nature</i> 419, 269–270.' + doi('10.1038/419269a'),
+  Buda2011: 'Buda, M., Fornito, A., Bergström, Z. M. and Simons, J. S. (2011), A specific brain structural basis for individual differences in reality monitoring, <i>Journal of Neuroscience</i> 31, 14308–14313.' + doi('10.1523/jneurosci.3595-11.2011'),
+  Catani2005: 'Catani, M., Jones, D. K. and ffytche, D. H. (2005), Perisylvian language networks of the human brain, <i>Annals of Neurology</i> 57, 8–16.' + doi('10.1002/ana.20319'),
+  Catani2007: 'Catani, M. et al. (2007), Symmetries in human brain language pathways correlate with verbal recall, <i>Proceedings of the National Academy of Sciences</i> 104, 17163–17168.' + doi('10.1073/pnas.0702116104'),
+  Crick2005: 'Crick, F. C. and Koch, C. (2005), What is the function of the claustrum?, <i>Philosophical Transactions of the Royal Society B</i> 360, 1271–1279.' + doi('10.1098/rstb.2005.1661'),
+  DiChiara1988: 'Di Chiara, G. and Imperato, A. (1988), Drugs abused by humans preferentially increase synaptic dopamine concentrations in the mesolimbic system of freely moving rats, <i>Proceedings of the National Academy of Sciences</i> 85, 5274–5278.' + doi('10.1073/pnas.85.14.5274'),
+  Duffau2005: 'Duffau, H. et al. (2005), New insights into the anatomo-functional connectivity of the semantic system: a study using cortico-subcortical electrostimulations, <i>Brain</i> 128, 797–810.' + doi('10.1093/brain/awh423'),
+  Dum2003: 'Dum, R. P. and Strick, P. L. (2003), An unfolded map of the cerebellar dentate nucleus and its projections to the cerebral cortex, <i>Journal of Neurophysiology</i> 89, 634–639.' + doi('10.1152/jn.00626.2002'),
+  Eickhoff2006: 'Eickhoff, S. B., Schleicher, A., Zilles, K. and Amunts, K. (2006), The human parietal operculum. I. Cytoarchitectonic mapping of subdivisions, <i>Cerebral Cortex</i> 16, 254–267.' + doi('10.1093/cercor/bhi105'),
+  Epstein1998: 'Epstein, R. and Kanwisher, N. (1998), A cortical representation of the local visual environment, <i>Nature</i> 392, 598–601.' + doi('10.1038/33402'),
+  Fried1998: 'Fried, I., Wilson, C. L., MacDonald, K. A. and Behnke, E. J. (1998), Electric current stimulates laughter, <i>Nature</i> 391, 650.' + doi('10.1038/35536'),
+  Geschwind1968: 'Geschwind, N. and Levitsky, W. (1968), Human brain: left-right asymmetries in temporal speech region, <i>Science</i> 161, 186–187.' + doi('10.1126/science.161.3837.186'),
+  Geyer1996: 'Geyer, S. et al. (1996), Two different areas within the primary motor cortex of man, <i>Nature</i> 382, 805–807.' + doi('10.1038/382805a0'),
+  Goodale1992: 'Goodale, M. A. and Milner, A. D. (1992), Separate visual pathways for perception and action, <i>Trends in Neurosciences</i> 15, 20–25.' + doi('10.1016/0166-2236(92)90344-8'),
+  Hofer2006: 'Hofer, S. and Frahm, J. (2006), Topography of the human corpus callosum revisited: comprehensive fiber tractography using diffusion tensor magnetic resonance imaging, <i>NeuroImage</i> 32, 989–994.' + doi('10.1016/j.neuroimage.2006.05.044'),
+  Kanda2014: 'Kanda, T. et al. (2014), High signal intensity in the dentate nucleus and globus pallidus on unenhanced T1-weighted MR images: relationship with increasing cumulative dose of a gadolinium-based contrast material, <i>Radiology</i> 270, 834–841.' + doi('10.1148/radiol.13131669'),
+  Kanwisher1997: 'Kanwisher, N., McDermott, J. and Chun, M. M. (1997), The fusiform face area: a module in human extrastriate cortex specialized for face perception, <i>Journal of Neuroscience</i> 17, 4302–4311.' + doi('10.1523/jneurosci.17-11-04302.1997'),
+  Koubeissi2014: 'Koubeissi, M. Z., Bartolomei, F., Beltagy, A. and Picard, F. (2014), Electrical stimulation of a small brain area reversibly disrupts consciousness, <i>Epilepsy and Behavior</i> 37, 32–35.' + doi('10.1016/j.yebeh.2014.05.027'),
+  Laxton2010: 'Laxton, A. W. et al. (2010), A phase I trial of deep brain stimulation of memory circuits in Alzheimer’s disease, <i>Annals of Neurology</i> 68, 521–534.' + doi('10.1002/ana.22089'),
+  Lebel2008: 'Lebel, C. et al. (2008), Microstructural maturation of the human brain from childhood to adulthood, <i>NeuroImage</i> 40, 1044–1055.' + doi('10.1016/j.neuroimage.2007.12.053'),
+  Martino2010: 'Martino, J. et al. (2010), Anatomic dissection of the inferior fronto-occipital fasciculus revisited in the lights of brain stimulation data, <i>Cortex</i> 46, 691–699.' + doi('10.1016/j.cortex.2009.07.015'),
+  Matsumoto2007: 'Matsumoto, M. and Hikosaka, O. (2007), Lateral habenula as a source of negative reward signals in dopamine neurons, <i>Nature</i> 447, 1111–1115.' + doi('10.1038/nature05860'),
+  Mayberg2005: 'Mayberg, H. S. et al. (2005), Deep brain stimulation for treatment-resistant depression, <i>Neuron</i> 45, 651–660.' + doi('10.1016/j.neuron.2005.02.014'),
+  Mesulam1983: 'Mesulam, M.-M., Mufson, E. J., Levey, A. I. and Wainer, B. H. (1983), Cholinergic innervation of cortex by the basal forebrain, <i>Journal of Comparative Neurology</i> 214, 170–197.' + doi('10.1002/cne.902140206'),
+  MorenoJimenez2019: 'Moreno-Jiménez, E. P. et al. (2019), Adult hippocampal neurogenesis is abundant in neurologically healthy subjects and drops sharply in patients with Alzheimer’s disease, <i>Nature Medicine</i> 25, 554–560.' + doi('10.1038/s41591-019-0375-9'),
+  Morosan2001: 'Morosan, P. et al. (2001), Human primary auditory cortex: cytoarchitectonic subdivisions and mapping into a spatial reference system, <i>NeuroImage</i> 13, 684–701.' + doi('10.1006/nimg.2000.0715'),
+  Naqvi2007: 'Naqvi, N. H., Rudrauf, D., Damasio, H. and Bechara, A. (2007), Damage to the insula disrupts addiction to cigarette smoking, <i>Science</i> 315, 531–534.' + doi('10.1126/science.1135926'),
+  OKeefe1971: 'O’Keefe, J. and Dostrovsky, J. (1971), The hippocampus as a spatial map: preliminary evidence from unit activity in the freely-moving rat, <i>Brain Research</i> 34, 171–175.' + doi('10.1016/0006-8993(71)90358-1'),
+  Papez1937: 'Papez, J. W. (1937), A proposed mechanism of emotion, <i>Archives of Neurology and Psychiatry</i> 38, 725–743.' + doi('10.1001/archneurpsyc.1937.02260220069003'),
+  Paus1996: 'Paus, T. (1996), Location and function of the human frontal eye-field: a selective review, <i>Neuropsychologia</i> 34, 475–483.' + doi('10.1016/0028-3932(95)00134-4'),
+  Penfield1937: 'Penfield, W. and Boldrey, E. (1937), Somatic motor and sensory representation in the cerebral cortex of man as studied by electrical stimulation, <i>Brain</i> 60, 389–443.' + doi('10.1093/brain/60.4.389'),
+  Picard1996: 'Picard, N. and Strick, P. L. (1996), Motor areas of the medial wall: a review of their location and functional activation, <i>Cerebral Cortex</i> 6, 342–353.' + doi('10.1093/cercor/6.3.342'),
+  Reynolds1969: 'Reynolds, D. V. (1969), Surgery in the rat during electrical analgesia induced by focal brain stimulation, <i>Science</i> 164, 444–445.' + doi('10.1126/science.164.3878.444'),
+  Schmahmann1998: 'Schmahmann, J. D. and Sherman, J. C. (1998), The cerebellar cognitive affective syndrome, <i>Brain</i> 121, 561–579.' + doi('10.1093/brain/121.4.561'),
+  Schmahmann2003: 'Schmahmann, J. D. (2003), Vascular syndromes of the thalamus, <i>Stroke</i> 34, 2264–2278.' + doi('10.1161/01.str.0000087786.38997.9e'),
+  Schultz1997: 'Schultz, W., Dayan, P. and Montague, P. R. (1997), A neural substrate of prediction and reward, <i>Science</i> 275, 1593–1599.' + doi('10.1126/science.275.5306.1593'),
+  Scott2000: 'Scott, S. K., Blank, C. C., Rosen, S. and Wise, R. J. S. (2000), Identification of a pathway for intelligible speech in the left temporal lobe, <i>Brain</i> 123, 2400–2406.' + doi('10.1093/brain/123.12.2400'),
+  Scoville1957: 'Scoville, W. B. and Milner, B. (1957), Loss of recent memory after bilateral hippocampal lesions, <i>Journal of Neurology, Neurosurgery and Psychiatry</i> 20, 11–21.' + doi('10.1136/jnnp.20.1.11'),
+  Semendeferi2001: 'Semendeferi, K. et al. (2001), Prefrontal cortex in humans and apes: a comparative study of area 10, <i>American Journal of Physical Anthropology</i> 114, 224–241.' + doi('10.1002/1096-8644(200103)114:3<224::aid-ajpa1022>3.0.co;2-i'.replace('<', '%3C').replace('>', '%3E')),
+  Shallice1991: 'Shallice, T. and Burgess, P. W. (1991), Deficits in strategy application following frontal lobe damage in man, <i>Brain</i> 114, 727–741.' + doi('10.1093/brain/114.2.727'),
+  Sorrells2018: 'Sorrells, S. F. et al. (2018), Human hippocampal neurogenesis drops sharply in children to undetectable levels in adults, <i>Nature</i> 555, 377–381.' + doi('10.1038/nature25975'),
+  Whitehouse1982: 'Whitehouse, P. J. et al. (1982), Alzheimer’s disease and senile dementia: loss of neurons in the basal forebrain, <i>Science</i> 215, 1237–1239.' + doi('10.1126/science.7058341'),
+  Yang2018: 'Yang, Y. et al. (2018), Ketamine blocks bursting in the lateral habenula to rapidly relieve depression, <i>Nature</i> 554, 317–322.' + doi('10.1038/nature25509'),
+  Zihl1983: 'Zihl, J., von Cramon, D. and Mai, N. (1983), Selective disturbance of movement vision after bilateral brain damage, <i>Brain</i> 106, 313–340.' + doi('10.1093/brain/106.2.313'),
+};

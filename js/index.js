@@ -13,3 +13,5 @@ export * from './anatomy.js';       // built-in parcellations: Desikan-Killiany 
 export * from './maps.js';          // labelled and statistical maps: regions at points, statistics, overlap, assignment
 export * from './head.js';          // the head: landmarks, frames, the scalp, the 10-20 system, fitting, scalp maps
 export * from './atlas.js';         // the catalogue of atlases and their sources
+export * from './brain.js';        // the human brain as a tree of structures, joined to the anatomy product
+export * from './knowledge.js';    // what is known of each structure

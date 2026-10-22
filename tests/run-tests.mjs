@@ -29,6 +29,8 @@ import {
   labelledMap, overlap, dice, confusion, statisticalMap,
   headFrame, ellipsoidScalp, ellipsoidLandmarks, maskScalp, tenTwenty, TEN_TWENTY, fitSimilarity, scaleToHead, sphericalSpline, projectToMask, Scalp,
   ATLASES, CITATIONS, listAtlases,
+  BRAIN_STRUCTURES, structure, keysOf, structureOfKey, SYSTEMS, LOBE_COLOURS, lobeOf,
+  KNOWLEDGE, KNOWLEDGE_PARTS, REFERENCES, FIELDS, knowledgeOf, referencesOf,
 } from '../js/index.js';
 
 const { check, assert, skip, done } = suite();
@@ -425,6 +427,114 @@ const DEG = Math.PI / 180;
   assert('atlas: every citation key of the catalogue has its reference', unknown.length === 0, unknown.join(', '));
   assert('atlas: every atlas names a space of the catalogue and parcellations with licences', listAtlases().every((a) => SPACES[a.space] && a.spaces.every((s) => SPACES[s]) && a.parcellations.every((p) => p.licence && p.id && p.name)));
   assert('atlas: the human atlas is in the EBRAINS space with Julich-Brain, Schaefer and Desikan-Killiany', ATLASES.human.space === 'mni152-nlin-2009c-asym' && ATLASES.human.parcellations.map((p) => p.id).join() === 'julich-brain-3.1,schaefer-2018-100-7,schaefer-2018-400-7,desikan-killiany');
+}
+
+// ---- the brain: its tree of structures ---------------------------------------------------------------
+{
+  const ids = BRAIN_STRUCTURES.map((s) => s.id);
+  assert('brain: every structure has a unique id, a name and a known parent', new Set(ids).size === ids.length && BRAIN_STRUCTURES.every((s) => s.name && (s.parent === null || structure(s.parent))));
+  const kinds = new Set(['group', 'surface', 'lobe', 'gyrus', 'nucleus', 'tract', 'region', 'ventricle']);
+  assert('brain: every structure is of a known kind', BRAIN_STRUCTURES.every((s) => kinds.has(s.kind)), BRAIN_STRUCTURES.filter((s) => !kinds.has(s.kind)).map((s) => s.id).join());
+  // Every key names one structure and one side, and the inverse lookup returns it.
+  const seen = new Map();
+  let clash = '';
+  for (const s of BRAIN_STRUCTURES) for (const which of ['label', 'mesh']) for (const side of ['left', 'right', 'mid']) {
+    const k = s[which] && s[which][side];
+    if (!k) continue;
+    const prev = seen.get(`${which}|${k}`);
+    if (prev && prev !== s.id) clash += `${k} (${prev}, ${s.id}) `;
+    seen.set(`${which}|${k}`, s.id);
+  }
+  assert('brain: no key names two structures', !clash, clash);
+  assert('brain: a key leads back to its structure and side', BRAIN_STRUCTURES.every((s) => ['left', 'right', 'mid'].every((side) => !s.label || !s.label[side] || (structureOfKey(s.label[side])?.id === s.id && structureOfKey(s.label[side])?.side === side))));
+  // Harvard-Oxford's lateralised labels: odd values left, even right, 1 to 96, each used once.
+  const ho = BRAIN_STRUCTURES.filter((s) => s.label && s.label.left && s.label.left.startsWith('ho:'));
+  const hoValues = ho.flatMap((s) => [Number(s.label.left.slice(3)), Number(s.label.right.slice(3))]);
+  assert('brain: the 48 Harvard-Oxford gyri take the 96 lateralised labels, odd on the left', ho.length === 48 && new Set(hoValues).size === 96 && ho.every((s) => Number(s.label.left.slice(3)) % 2 === 1 && Number(s.label.right.slice(3)) === Number(s.label.left.slice(3)) + 1));
+  assert('brain: every gyrus lies in a lobe with a colour', ho.every((s) => LOBE_COLOURS[lobeOf(s.id)]));
+  assert('brain: keysOf gathers the keys beneath a structure', keysOf('hippocampus').left.has('aseg:17') && keysOf('hippocampus').left.has('massp:42') && keysOf('hippocampus').right.has('aseg:53'));
+  assert('brain: short names exist and are short', BRAIN_STRUCTURES.every((s) => s.short && s.short.length <= 36), BRAIN_STRUCTURES.filter((s) => !s.short || s.short.length > 36).map((s) => s.short).join(' | '));
+  const unknownMembers = SYSTEMS.flatMap((y) => y.members.filter((m) => !structure(m)));
+  assert('brain: every member of a functional system is a structure', unknownMembers.length === 0, unknownMembers.join());
+  assert('brain: every system has a summary and at least four members', SYSTEMS.every((y) => y.summary && y.members.length >= 4));
+}
+
+// ---- the brain: the sides of the labels, by the centroids of their voxels --------------------------------
+{
+  // The centroid of every key's voxels in the anatomy product (data/products/brain_anatomy.py),
+  // recorded with its source in the fixture; a left key must lie at x < 0, a right one at
+  // x > 0, and a midline structure near x = 0.
+  const fx = fixture('brain-centroids.json');
+  const bad = [];
+  let n = 0;
+  for (const s of BRAIN_STRUCTURES) for (const which of ['label', 'mesh']) for (const side of ['left', 'right', 'mid']) {
+    const k = s[which] && s[which][side];
+    if (!k || !fx.centroids[k]) continue;
+    n++;
+    const x = fx.centroids[k][0];
+    // FreeSurfer does not divide some labels by side: the fluid outside the ventricles and the
+    // lesions of the white matter lie on both sides, and are not held to the midline.
+    const bilateral = ['csf', 'white-matter-hypointensities'].includes(s.id);
+    if ((side === 'left' && x >= 0) || (side === 'right' && x <= 0) || (side === 'mid' && !bilateral && Math.abs(x) > 6)) bad.push(`${k} ${side} x=${x}`);
+  }
+  assert(`brain: every key lies on its side (${n} keys, by the centroids of their voxels)`, bad.length === 0 && n > 150, bad.join('; '));
+  const missing = BRAIN_STRUCTURES.flatMap((s) => ['left', 'right', 'mid'].map((side) => s.label && s.label[side]).filter(Boolean)).filter((k) => !fx.centroids[k]);
+  assert('brain: every label key of the catalogue has voxels in the product', missing.length === 0, missing.join());
+  const product = resolve(CACHE, 'products', 'anatomy-mni152.json');
+  if (existsSync(product)) {
+    const p = JSON.parse(readFileSync(product, 'utf8'));
+    const meshKeys = new Set(p.meshes.map((m) => m.key));
+    const wanted = BRAIN_STRUCTURES.flatMap((s) => ['left', 'right', 'mid'].map((side) => s.mesh && s.mesh[side]).filter(Boolean));
+    const absent = wanted.filter((k) => !meshKeys.has(k));
+    assert(`brain: every mesh key of the catalogue is in the product (${wanted.length} meshes)`, absent.length === 0, absent.join());
+    const drift = Object.entries(fx.centroids).filter(([k, c]) => p.regions[k] && Math.hypot(...p.regions[k].centroid.map((v, a) => v - c[a])) > 0.05).map(([k]) => k);
+    assert('brain: the product\'s centroids are those recorded', drift.length === 0, drift.join());
+  } else skip('brain: the catalogue against the anatomy product', 'data/cache/products/anatomy-mni152.json is not built');
+}
+
+// ---- the brain: what is known of each structure --------------------------------------------------------
+{
+  const missing = BRAIN_STRUCTURES.filter((s) => !KNOWLEDGE[s.id]).map((s) => s.id);
+  assert(`knowledge: every structure has an entry (${Object.keys(KNOWLEDGE).length})`, missing.length === 0, missing.join());
+  const extra = Object.keys(KNOWLEDGE).filter((id) => !structure(id));
+  assert('knowledge: every entry is of a structure of the tree', extra.length === 0, extra.join());
+  const parts = Object.values(KNOWLEDGE_PARTS).flatMap((p) => Object.keys(p.KNOWLEDGE));
+  assert('knowledge: no structure is described in two parts', new Set(parts).size === parts.length);
+  const refKeys = Object.values(KNOWLEDGE_PARTS).flatMap((p) => Object.keys(p.REFS));
+  assert('knowledge: the parts\' own references repeat neither each other nor the shared ones', new Set(refKeys).size === refKeys.length);
+  const unknownRefs = Object.entries(KNOWLEDGE).flatMap(([id, e]) => (e.refs || []).filter((r) => !REFERENCES[r]).map((r) => `${id}:${r}`));
+  assert('knowledge: every entry has references, all of them known', Object.values(KNOWLEDGE).every((e) => e.refs && e.refs.length) && unknownRefs.length === 0, unknownRefs.join());
+  const unused = Object.keys(REFERENCES).filter((r) => !Object.values(KNOWLEDGE).some((e) => (e.refs || []).includes(r)));
+  assert(`knowledge: nearly every reference is cited by some entry (${unused.length} not)`, unused.length <= 12, unused.join());
+  // The HTML of the fields: only <i> and <b>, no bare ampersand or angle bracket, typographic apostrophes.
+  const badHtml = [];
+  for (const [id, e] of Object.entries(KNOWLEDGE)) for (const [f, v] of Object.entries(e)) for (const t of [].concat(v)) {
+    if (typeof t !== 'string' || f === 'inherit' || f === 'refs') continue;
+    if (/&(?![a-z]+;)|<(?!\/?(i|b)>)/.test(t) || /[a-z]'[a-z]/i.test(t)) badHtml.push(`${id}.${f}`);
+  }
+  assert('knowledge: the text is safe HTML with typographic apostrophes', badHtml.length === 0, badHtml.join());
+  const drawn = BRAIN_STRUCTURES.filter((s) => s.kind !== 'group');
+  const thin = drawn.filter((s) => { const { entry, inherited } = knowledgeOf(s.id); return !(entry.summary && (entry.location || inherited.location) && (entry.function || inherited.function || entry.note)); }).map((s) => s.id);
+  assert('knowledge: every drawn structure says what it is, where it lies, and what it does or what the atlas means by it', thin.length === 0, thin.join());
+  const badInherit = Object.entries(KNOWLEDGE).filter(([, e]) => e.inherit && (!KNOWLEDGE[e.inherit] || KNOWLEDGE[e.inherit].inherit)).map(([id]) => id);
+  assert('knowledge: a division inherits from a whole that does not itself inherit', badInherit.length === 0, badInherit.join());
+  const inheriting = Object.entries(KNOWLEDGE).filter(([, e]) => e.inherit).map(([id]) => id);
+  const pars = knowledgeOf('pars-opercularis');
+  assert(`knowledge: a division takes what it does not say from its whole (${inheriting.length} divisions)`, inheriting.length > 10 && pars.inherited.supply && pars.inherited.supply.id === 'inferior-frontal-gyrus' && !pars.inherited.summary);
+  assert('knowledge: the fields shown are the seven', FIELDS.join() === 'summary,location,function,connections,supply,development,clinical');
+  const withSupply = drawn.filter((s) => { const { entry, inherited } = knowledgeOf(s.id); return entry.supply || inherited.supply; }).length;
+  assert(`knowledge: most drawn structures name their blood supply (${withSupply} of ${drawn.length})`, withSupply / drawn.length > 0.8);
+  const latin = drawn.filter((s) => KNOWLEDGE[s.id].latin).length;
+  // The regions particular to an atlas (Harvard-Oxford's divisions, the thalamic clusters, the
+  // bundles' segments) have no term in Terminologia Neuroanatomica.
+  assert(`knowledge: most drawn structures have their Latin name (${latin} of ${drawn.length})`, latin / drawn.length > 0.6);
+  assert('knowledge: references are resolved for the card', referencesOf(KNOWLEDGE['precentral-gyrus']).every((r) => /\(\d{4}\)/.test(r)));
+  const noYear = Object.entries(REFERENCES).filter(([, r]) => !/\(\d{4}\)/.test(r)).map(([k]) => k);
+  assert('knowledge: every reference states its year', noYear.length === 0, noYear.join());
+  // Papers: a journal in italics followed by its volume.
+  const papers = Object.entries(REFERENCES).filter(([, r]) => /<\/i> \d+/.test(r));
+  const noDoi = papers.filter(([, r]) => !r.includes('doi.org/')).map(([k]) => k);
+  assert(`knowledge: every paper carries its DOI (${papers.length} papers)`, noDoi.length <= 3, noDoi.join());
 }
 
 done();
