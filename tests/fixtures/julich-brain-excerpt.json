@@ -1,0 +1,323 @@
+{
+ "source": "EBRAINS siibra-configurations (github.com/FZJ-INM1-BDA/siibra-configurations, master): parcellations/julichbrain_v3_1.json pruned to a few areas, and maps/mni152-jba31-labelled.json restricted to their indices.",
+ "retrieved_at": "2026-10-22",
+ "full_tree": {
+  "nodes": 771,
+  "leaves": 454,
+  "hemisphere_leaves": 454,
+  "map_indices": 414
+ },
+ "parcellation": {
+  "@id": "minds/core/parcellationatlas/v1.0.0/94c1125b-b87e-45e4-901c-00daee7f2579-310",
+  "name": "Julich-Brain Cytoarchitectonic Atlas (v3.1)",
+  "@version": {
+   "name": "3.1.0",
+   "@prev": "minds/core/parcellationatlas/v1.0.0/94c1125b-b87e-45e4-901c-00daee7f2579-300"
+  },
+  "species": "homo sapiens",
+  "modality": "cytoarchitecture",
+  "regions": [
+   {
+    "name": "telencephalon",
+    "children": [
+     {
+      "name": "cerebral nuclei",
+      "children": [
+       {
+        "name": "basal ganglia",
+        "children": [
+         {
+          "name": "ventral pallidum",
+          "children": [
+           {
+            "name": "VP (Ventral Pallidum)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "VP (Ventral Pallidum) - right hemisphere"
+             },
+             {
+              "name": "VP (Ventral Pallidum) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "name": "cerebral cortex",
+      "children": [
+       {
+        "name": "parietal lobe",
+        "children": [
+         {
+          "name": "postcentral gyrus",
+          "children": [
+           {
+            "name": "Area 3b (PostCG)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area 3b (PostCG) - right hemisphere"
+             },
+             {
+              "name": "Area 3b (PostCG) - left hemisphere"
+             }
+            ]
+           },
+           {
+            "name": "Area 3a (PostCG)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area 3a (PostCG) - right hemisphere"
+             },
+             {
+              "name": "Area 3a (PostCG) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "name": "frontal lobe",
+        "children": [
+         {
+          "name": "precentral gyrus",
+          "children": [
+           {
+            "name": "Area 4p (PreCG)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area 4p (PreCG) - right hemisphere"
+             },
+             {
+              "name": "Area 4p (PreCG) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "name": "inferior frontal gyrus",
+          "children": [
+           {
+            "name": "Area 44 (IFG)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area 44 (IFG) - right hemisphere"
+             },
+             {
+              "name": "Area 44 (IFG) - left hemisphere"
+             }
+            ]
+           },
+           {
+            "name": "Area 45 (IFG)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area 45 (IFG) - right hemisphere"
+             },
+             {
+              "name": "Area 45 (IFG) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "name": "occipital lobe",
+        "children": [
+         {
+          "name": "occipital cortex",
+          "children": [
+           {
+            "name": "Area hOc1 (V1, 17, CalcS)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "Area hOc1 (V1, 17, CalcS) - right hemisphere"
+             },
+             {
+              "name": "Area hOc1 (V1, 17, CalcS) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "name": "limbic lobe",
+        "children": [
+         {
+          "name": "hippocampal formation",
+          "children": [
+           {
+            "name": "CA1 (Hippocampus)",
+            "granularity": "default",
+            "children": [
+             {
+              "name": "CA1 (Hippocampus) - right hemisphere"
+             },
+             {
+              "name": "CA1 (Hippocampus) - left hemisphere"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "map": {
+  "@id": "siibra-map-v0.0.1_mni152-jba31-labelled",
+  "name": "Julich-Brain Atlas, cytoarchitectonic maps (v3.1)",
+  "space": {
+   "@id": "minds/core/referencespace/v1.0.0/dafcffc5-4826-4bf1-8ff6-46b8a31ff8e2"
+  },
+  "parcellation": {
+   "@id": "minds/core/parcellationatlas/v1.0.0/94c1125b-b87e-45e4-901c-00daee7f2579-310"
+  },
+  "volumes": [
+   {
+    "@type": "siibra/volume/v0.0.1",
+    "providers": {
+     "nii": {
+      "left hemisphere": "https://data-proxy.ebrains.eu/api/v1/public/buckets/d-f1fe19e8-99bd-44bc-9616-a52850680777/maximum-probability-maps_MPMs_207-areas/JulichBrainAtlas_3.1_207areas_MPM_lh_MNI152.nii.gz",
+      "right hemisphere": "https://data-proxy.ebrains.eu/api/v1/public/buckets/d-f1fe19e8-99bd-44bc-9616-a52850680777/maximum-probability-maps_MPMs_207-areas/JulichBrainAtlas_3.1_207areas_MPM_rh_MNI152.nii.gz"
+     }
+    }
+   }
+  ],
+  "indices": {
+   "Area 3b (PostCG) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 1,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area 44 (IFG) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 59,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area 3a (PostCG) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 84,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area hOc1 (V1, 17, CalcS) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 91,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area 4p (PreCG) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 142,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "CA1 (Hippocampus) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 146,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area 45 (IFG) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 155,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "VP (Ventral Pallidum) - left hemisphere": [
+    {
+     "volume": 0,
+     "label": 185,
+     "fragment": "left hemisphere"
+    }
+   ],
+   "Area 3b (PostCG) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 1,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "Area 44 (IFG) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 59,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "Area 3a (PostCG) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 84,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "Area hOc1 (V1, 17, CalcS) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 91,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "Area 4p (PreCG) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 142,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "CA1 (Hippocampus) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 146,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "Area 45 (IFG) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 155,
+     "fragment": "right hemisphere"
+    }
+   ],
+   "VP (Ventral Pallidum) - right hemisphere": [
+    {
+     "volume": 0,
+     "label": 185,
+     "fragment": "right hemisphere"
+    }
+   ]
+  }
+ }
+}

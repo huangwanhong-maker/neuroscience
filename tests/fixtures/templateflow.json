@@ -1,0 +1,303 @@
+{
+ "source": "TemplateFlow, https://templateflow.s3.amazonaws.com/tpl-<id>/template_description.json: the origin (the centre of the first voxel, RAS mm), shape and zooms of each resolution",
+ "retrieved_at": "2026-10-22",
+ "templates": {
+  "MNI152NLin2009cAsym": {
+   "Name": "ICBM 152 Nonlinear Asymmetrical template version 2009c",
+   "res": {
+    "01": {
+     "origin": [
+      -96,
+      -132,
+      -78
+     ],
+     "shape": [
+      193,
+      229,
+      193
+     ],
+     "zooms": [
+      1,
+      1,
+      1
+     ]
+    },
+    "02": {
+     "origin": [
+      -96.5,
+      -132.5,
+      -78.5
+     ],
+     "shape": [
+      97,
+      115,
+      97
+     ],
+     "zooms": [
+      2,
+      2,
+      2
+     ]
+    },
+    "03": {
+     "origin": [
+      -97,
+      -133,
+      -79
+     ],
+     "shape": [
+      65,
+      77,
+      65
+     ],
+     "zooms": [
+      3,
+      3,
+      3
+     ]
+    },
+    "04": {
+     "origin": [
+      -97.5,
+      -133.5,
+      -79.5
+     ],
+     "shape": [
+      49,
+      58,
+      49
+     ],
+     "zooms": [
+      4,
+      4,
+      4
+     ]
+    }
+   }
+  },
+  "MNI152NLin2009cSym": {
+   "Name": "ICBM 152 Nonlinear Symmetrical template version 2009c",
+   "res": {
+    "1": {
+     "origin": [
+      -96,
+      -132,
+      -78
+     ],
+     "shape": [
+      193,
+      229,
+      193
+     ],
+     "zooms": [
+      1,
+      1,
+      1
+     ]
+    },
+    "iso4mm": {
+     "origin": [
+      -93.2,
+      14.926,
+      -167.088
+     ],
+     "shape": [
+      46,
+      32,
+      59
+     ],
+     "zooms": [
+      4,
+      4,
+      4
+     ]
+    }
+   }
+  },
+  "MNI152NLin6Asym": {
+   "Name": "FSL's MNI ICBM 152 non-linear 6th Generation Asymmetric Average Brain Stereotaxic Registration Model",
+   "res": {
+    "01": {
+     "origin": [
+      -91,
+      -126,
+      -72
+     ],
+     "shape": [
+      182,
+      218,
+      182
+     ],
+     "zooms": [
+      1,
+      1,
+      1
+     ]
+    },
+    "02": {
+     "origin": [
+      -90,
+      -126,
+      -72
+     ],
+     "shape": [
+      91,
+      109,
+      91
+     ],
+     "zooms": [
+      2,
+      2,
+      2
+     ]
+    },
+    "03": {
+     "origin": [
+      -91.5,
+      -126,
+      -72
+     ],
+     "shape": [
+      364,
+      436,
+      364
+     ],
+     "zooms": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "04": {
+     "origin": [
+      -91.3,
+      -126,
+      -72
+     ],
+     "shape": [
+      260,
+      311,
+      260
+     ],
+     "zooms": [
+      0.7,
+      0.7,
+      0.7
+     ]
+    },
+    "05": {
+     "origin": [
+      -90.8,
+      -126,
+      -72
+     ],
+     "shape": [
+      227,
+      272,
+      227
+     ],
+     "zooms": [
+      0.8,
+      0.8,
+      0.8
+     ]
+    },
+    "06": {
+     "origin": [
+      -89.2,
+      -126,
+      -72
+     ],
+     "shape": [
+      113,
+      136,
+      113
+     ],
+     "zooms": [
+      1.6,
+      1.6,
+      1.6
+     ]
+    }
+   }
+  },
+  "MNI152Lin": {
+   "Name": "Linear ICBM Average Brain (ICBM152) Stereotaxic Registration Model",
+   "res": {
+    "01": {
+     "origin": [
+      -90,
+      -126,
+      -72
+     ],
+     "shape": [
+      181,
+      217,
+      181
+     ],
+     "zooms": [
+      1,
+      1,
+      1
+     ]
+    },
+    "02": {
+     "origin": [
+      -90.5,
+      -126.5,
+      -72.5
+     ],
+     "shape": [
+      91,
+      109,
+      91
+     ],
+     "zooms": [
+      2,
+      2,
+      2
+     ]
+    }
+   }
+  },
+  "fsaverage": {
+   "Name": "FreeSurfer's fsaverage template",
+   "res": {
+    "01": {
+     "origin": [
+      -128,
+      -128,
+      -128
+     ],
+     "shape": [
+      256,
+      256,
+      256
+     ],
+     "zooms": [
+      1,
+      1,
+      1
+     ]
+    },
+    "02": {
+     "origin": [
+      -2,
+      -16,
+      9
+     ],
+     "shape": [
+      76,
+      76,
+      93
+     ],
+     "zooms": [
+      2,
+      2,
+      2
+     ]
+    }
+   }
+  }
+ }
+}

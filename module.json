@@ -1,0 +1,10 @@
+{
+  "name": "neuroscience",
+  "kind": "field",
+  "status": "draft",
+  "depends": [],
+  "foundations": [
+    "calx",
+    "physis"
+  ]
+}

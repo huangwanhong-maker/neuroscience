@@ -1,0 +1,265 @@
+{
+ "source": "TemplateFlow (https://templateflow.s3.amazonaws.com), the first 352 bytes of each file after gunzip, base64; and the ICBM 2009c asymmetric template from the McConnell BIC (Colin 27 from packages.bic.mni.mcgill.ca).",
+ "retrieved_at": "2026-10-22",
+ "headers": [
+  {
+   "file": "tpl-MNI152NLin2009cAsym/tpl-MNI152NLin2009cAsym_res-02_T1w.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAYQBzAGEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAABAAAAAQAAAAEAAAAAAAACAPwAAgD8AAIA/AACwQwAAgD8AAAAAAAAACpNoGkbqYGo+AAAAAAAAAAAAAAAAAAAAAEZyZWVTdXJmZXIgTWF5IDEzIDIwMTMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAwcIAgATDAACdwgAAAEAAAAAAAAAAAAAAwcIAAAAAAAAAQAAAAAAAgATDAAAAAAAAAAAAAABAAACdwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     97,
+     115,
+     97
+    ],
+    "pixdim": [
+     2,
+     2,
+     2
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     2,
+     0,
+     0,
+     -96.5
+    ],
+    "srow_y": [
+     0,
+     2,
+     0,
+     -132.5
+    ],
+    "srow_z": [
+     0,
+     0,
+     2,
+     -78.5
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -96.5,
+     -132.5,
+     -78.5
+    ]
+   }
+  },
+  {
+   "file": "tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-02_T1w.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAByAAMAWwBtAFsAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAABAAAAAQAAAAEAAAIA/AAAAAAAAAAAAAAAAAACwQwAAgD8AAAAAAAAAAgAA+kUAgDtFAAAAAAAAAAAAAAAAAAAAAEZTTDUuMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAtMIAAPzCAACQwgAAAEAAAAAAAAAAAAAAtMIAAAAAAAAAQAAAAAAAAPzCAAAAAAAAAAAAAABAAACQwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     91,
+     109,
+     91
+    ],
+    "pixdim": [
+     2,
+     2,
+     2
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     2,
+     0,
+     0,
+     -90
+    ],
+    "srow_y": [
+     0,
+     2,
+     0,
+     -126
+    ],
+    "srow_z": [
+     0,
+     0,
+     2,
+     -72
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -90,
+     -126,
+     -72
+    ]
+   }
+  },
+  {
+   "file": "tpl-MNI152NLin2009cAsym/tpl-MNI152NLin2009cAsym_res-02_atlas-Schaefer2018_desc-100Parcels7Networks_dseg.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAByAAMAYQBzAGEAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAABAAAAAQAAAAEAAAAAAAAAAAAAAAAAAAAAAAACwQwAAgD8AAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAwcIAgATDAACdwgAAAEAAAAAAAAAAgAAAwcIAAAAAAAAAQAAAAIAAgATDAAAAAAAAAAAAAABAAACdwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     97,
+     115,
+     97
+    ],
+    "pixdim": [
+     2,
+     2,
+     2
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     2,
+     0,
+     0,
+     -96.5
+    ],
+    "srow_y": [
+     0,
+     2,
+     0,
+     -132.5
+    ],
+    "srow_z": [
+     0,
+     0,
+     2,
+     -78.5
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -96.5,
+     -132.5,
+     -78.5
+    ],
+    "distinct_values": 101
+   }
+  },
+  {
+   "file": "tpl-MNI152NLin2009cAsym/tpl-MNI152NLin2009cAsym_res-01_T1w.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAByAAMAwQDlAMEAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAIA/AACAPwAAgD8AAAAAAACAPwAAAAAAAAAAAACwQwAAgD8AAAAAAAAACgBAHEYAAAAAAAAAAAAAAAAAAAAAAAAAAG1uYzJuaWkgbW5pX2ljYm0xNTJfbmxpbl9hc3ltXzA5Yy9tbmlfaWNibTE1Ml90MV90YWxfbmxpbl9hc3ltXzA5Yy5tbmMgbW5pX2ljYm0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAwMIAAATDAACcwgAAgD8AAAAAAAAAAAAAwMIAAAAAAACAPwAAAAAAAATDAAAAAAAAAAAAAIA/AACcwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     193,
+     229,
+     193
+    ],
+    "pixdim": [
+     1,
+     1,
+     1
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     1,
+     0,
+     0,
+     -96
+    ],
+    "srow_y": [
+     0,
+     1,
+     0,
+     -132
+    ],
+    "srow_z": [
+     0,
+     0,
+     1,
+     -78
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -96,
+     -132,
+     -78
+    ]
+   }
+  },
+  {
+   "file": "tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAByAAMAtgDaALYAAQABAAEAAQAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAIA/AACAPwAAgD8AAIA/AAAAAAAAAAAAAAAAAACwQwAAgD8AAAAAAAAAAgAA+kUAgDtFAAAAAAAAAAAAAAAAAAAAAEZTTDUuMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAtsIAAPzCAACQwgAAgD8AAAAAAAAAAAAAtsIAAAAAAACAPwAAAAAAAPzCAAAAAAAAAAAAAIA/AACQwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     182,
+     218,
+     182
+    ],
+    "pixdim": [
+     1,
+     1,
+     1
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     1,
+     0,
+     0,
+     -91
+    ],
+    "srow_y": [
+     0,
+     1,
+     0,
+     -126
+    ],
+    "srow_z": [
+     0,
+     0,
+     1,
+     -72
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -91,
+     -126,
+     -72
+    ]
+   }
+  },
+  {
+   "file": "tpl-MNI152Lin/tpl-MNI152Lin_res-01_T1w.nii.gz",
+   "header_base64": "XAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAByAAMAtQDZALUAAQABAAAAAAAAAAAAAAAAAAAAAAAAAAQAEAAAAAAAgD8AAIA/AACAPwAAgD8AAAAAAACAPwAAAAAAAAAAAACwQwAAgD8AAAAAAAAACgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG1uYzJuaWkgaWNibV9hdmdfMTUyX3QxX3RhbF9saW4ubW5jIC4uL25pZnRpL2ljYm1fYXZnXzE1Ml90MV90YWxfbGluLm5paQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAEAAAAAAAAAAAAAAAAAAAAtMIAAPzCAACQwgAAgD8AAAAAAAAAAAAAtMIAAAAAAACAPwAAAAAAAPzCAAAAAAAAAAAAAIA/AACQwgAAAAAAAAAAAAAAAAAAAABuKzEAAAAAAA==",
+   "expect": {
+    "dims": [
+     181,
+     217,
+     181
+    ],
+    "pixdim": [
+     1,
+     1,
+     1
+    ],
+    "datatype": "int16",
+    "srow_x": [
+     1,
+     0,
+     0,
+     -90
+    ],
+    "srow_y": [
+     0,
+     1,
+     0,
+     -126
+    ],
+    "srow_z": [
+     0,
+     0,
+     1,
+     -72
+    ],
+    "qform_code": 4,
+    "sform_code": 4,
+    "axes": "RAS",
+    "origin": [
+     -90,
+     -126,
+     -72
+    ]
+   }
+  }
+ ]
+}
