@@ -28,6 +28,8 @@ The first content is a brain atlas in the sense of the Human Brain Project's mul
 | `maps` | Labelled and statistical maps: the region at a point, volumes, centroids and bounds, masks, Dice and Jaccard, confusion of two labellings, maximum probability maps, assignment of an uncertain point (`js/maps.js`) | draft |
 | `head` | Landmarks and head frames (CTF, Neuromag); ellipsoid and image-cast scalps; the 10-20 and 10-10 systems by arcs; Umeyama's similarity; scaling to measurements; spherical splines; projection onto the brain (`js/head.js`) | draft |
 | `atlas` | The catalogue of atlases (human, mouse, rat): spaces, parcellations, sources and licences; the references (`js/atlas.js`) | draft |
+| `brain` | The human brain as a tree of 152 structures in the MNI 152 2009c space (cortex by lobe and gyrus, white matter and bundles, basal nuclei, hippocampus and its fields, thalamus and its nuclei, brainstem, cerebellum and its nuclei, ventricles), joined by keys to the infrastructure's anatomy product; colours, short names, and ten functional systems (`js/brain.js`) | draft |
+| `knowledge` | What is known of each structure: Latin name (Terminologia Neuroanatomica), summary, location, function, connections, blood supply, development, clinical significance, with references checked against Crossref; 152 entries in five parts by region (`js/knowledge.js`, `js/knowledge/`) | draft |
 | `surfaces` | Cortical surfaces (GIfTI, FreeSurfer), surface-based parcellations, geodesics on the cortex | planned |
 | `connectivity` | Structural and functional connectivity between regions as networks, and their measures | planned |
 | `neurons` | Morphologies (SWC), cable theory, the Hodgkin-Huxley model | planned |
@@ -56,7 +58,7 @@ The first content is a brain atlas in the sense of the Human Brain Project's mul
 node domains/neuroscience/tests/run-tests.mjs
 ```
 
-They compare the readers with the headers of the published templates (TemplateFlow's MNI 152 ICBM 2009c, FSL's 6th generation, MNI 152 linear, Schaefer's map) and with the Allen annotation volume's header; the catalogue of spaces with TemplateFlow's descriptions; the MNI-Talairach transforms with their published coefficients and Brett's statement of the anterior commissure's offset; the readers of the Allen ontology, the EBRAINS configuration of Julich-Brain, FreeSurfer's table and Schaefer's; the built-in parcellations with FreeSurfer's table, label by label; maps on constructed volumes, exactly; and the 10-20 system on a sphere, where every position has a known angle, and on an ellipsoid. The reference values are in `tests/fixtures/`, each with its source and date. 89 checks.
+They compare the readers with the headers of the published templates (TemplateFlow's MNI 152 ICBM 2009c, FSL's 6th generation, MNI 152 linear, Schaefer's map) and with the Allen annotation volume's header; the catalogue of spaces with TemplateFlow's descriptions; the MNI-Talairach transforms with their published coefficients and Brett's statement of the anterior commissure's offset; the readers of the Allen ontology, the EBRAINS configuration of Julich-Brain, FreeSurfer's table and Schaefer's; the built-in parcellations with FreeSurfer's table, label by label; maps on constructed volumes, exactly; and the 10-20 system on a sphere, where every position has a known angle, and on an ellipsoid; the tree of structures, its keys and the side of every key by the centroids of its voxels; and the knowledge base's coverage, inheritance, references and typography. The reference values are in `tests/fixtures/`, each with its source and date. 120 checks.
 
 Reading a file: the readers take bytes, and a gzipped file is inflated by a function the caller passes (Node's `zlib`, the browser's `DecompressionStream`); the domain itself touches no file and no network.
 
@@ -76,6 +78,10 @@ The atlases are fetched by the infrastructure's data library into its cache and 
 | `schaefer-2018` | Schaefer's 100 and 400 parcels in 7 networks, in the 2009c space, with their tables | MIT (CBIG) |
 | `ebrains-julich-brain` | Julich-Brain v3.1 maximum probability maps, one per hemisphere, with the EBRAINS configuration | EBRAINS terms (non-commercial) |
 | `allen-mouse-ccf` | The Allen CCF v3 template and 2017 annotation at 50 and 25 um, with the ontology | Allen Institute terms of use |
+| `massp-2` | MASSP 2.0: 31 subcortical structures on each side, from 7 T quantitative MRI (Bazin et al. 2020) | CC BY 4.0 |
+| `harvard-oxford` | The Harvard-Oxford cortical atlas, lateralised, at 25 % | FSL licence (non-commercial) |
+| `mial-thalamic-nuclei` | Seven thalamic nuclei on each side from diffusion MRI (Najdenovska et al. 2018) | CC BY 4.0 |
+| `ebrains-deep-white-matter` | The deep white-matter bundles' maximum probability map (Guevara et al. 2012) | CC BY-NC-SA 4.0 |
 
 ## 8. References
 
