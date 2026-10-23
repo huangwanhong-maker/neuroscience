@@ -15,3 +15,6 @@ export * from './head.js';          // the head: landmarks, frames, the scalp, t
 export * from './atlas.js';         // the catalogue of atlases and their sources
 export * from './brain.js';        // the human brain as a tree of structures, joined to the anatomy product
 export * from './knowledge.js';    // what is known of each structure
+export * from './signals.js';      // recordings: EDF, BDF, BrainVision and tables; filters, envelopes, spectra, bands
+export * from './forward.js';      // the head as concentric spheres: EEG potentials and MEG fields of dipoles; lead fields
+export * from './inverse.js';      // minimum-norm, dSPM and sLORETA estimates of the sources

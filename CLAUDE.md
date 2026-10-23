@@ -6,7 +6,7 @@ neuroscience is a domain of [The Science Infrastructures](https://github.com/hua
 
 ## 1. Purpose and Scope
 
-The domain holds the objects of neuroscience and their models, beginning with a brain atlas: reference spaces and their templates, parcellations and their maps, the head and its electrodes, for the human, the mouse and the rat. Later modules: cortical surfaces, connectivity, neurons, signals.
+The domain holds the objects of neuroscience and their models, beginning with a brain atlas: reference spaces and their templates, parcellations and their maps, the head and its electrodes, for the human, the mouse and the rat; then the signals of the brain: recordings, the forward models of EEG and MEG, inverse estimates, and fMRI maps on the cortex. Later modules: cortical surfaces, connectivity, neurons, and networks of spiking neurons.
 
 Out of scope:
 
@@ -49,4 +49,4 @@ The contract of a domain (README, `module.json`, `js/`, `tests/`, `theory/`, lat
 
 ## 6. Current State
 
-As of 2026-10-22: twelve modules of provisional JavaScript with 89 checks, three notes, and the catalogue of four fetched atlases. There is no C++ yet.
+As of 2026-10-23: seventeen modules of provisional JavaScript with 162 checks (the anatomy of ADR 0032; the signals, forward and inverse models of ADR 0034, checked on a real EEG recording when it is fetched), four notes, and the catalogue of the fetched atlases. There is no C++ yet.

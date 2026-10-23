@@ -228,3 +228,80 @@ export class StatisticalMap {
 }
 
 export const statisticalMap = (spec) => new StatisticalMap(spec);
+
+// ---- maps of a statistic: functional imaging ------------------------------------------------------
+
+// The value of a volume (a statistic of fMRI or PET, in the volume's own world space) at
+// points of a surface, sampled along each point's inward normal at the given depths (mm)
+// and reduced to one number: 'max' (the value of largest magnitude, keeping its sign) or
+// 'mean'. A cortical surface drawn at the outer edge of the grey matter is thus read
+// through its ribbon. Points outside the volume take NaN.
+export function projectToSurface(vol, positions, normals, { depths = [0, 1, 2, 3], reduce = 'max', frame = 0 } = {}) {
+  const n = positions.length / 3;
+  const out = new Float32Array(n);
+  const inv = worldToVoxelAffine(vol);
+  for (let v = 0; v < n; v++) {
+    let best = NaN, sum = 0, count = 0;
+    for (const d of depths) {
+      const x = positions[3 * v] - d * normals[3 * v], y = positions[3 * v + 1] - d * normals[3 * v + 1], z = positions[3 * v + 2] - d * normals[3 * v + 2];
+      const ijk = apply(inv, [x, y, z]);
+      const s = sampleVoxel(vol, ijk, { method: 'linear', outside: NaN, frame });
+      if (!Number.isFinite(s)) continue;
+      sum += s; count++;
+      if (!(Math.abs(s) <= Math.abs(best))) best = s;
+    }
+    out[v] = reduce === 'mean' ? (count ? sum / count : NaN) : best;
+  }
+  return out;
+}
+
+const worldToVoxelAffine = (vol) => {
+  // The inverse of the volume's affine, by the volume module's own inverse.
+  const p0 = worldToVoxel(vol, [0, 0, 0]), px = worldToVoxel(vol, [1, 0, 0]), py = worldToVoxel(vol, [0, 1, 0]), pz = worldToVoxel(vol, [0, 0, 1]);
+  return [px[0] - p0[0], py[0] - p0[0], pz[0] - p0[0], p0[0], px[1] - p0[1], py[1] - p0[1], pz[1] - p0[1], p0[1], px[2] - p0[2], py[2] - p0[2], pz[2] - p0[2], p0[2], 0, 0, 0, 1];
+};
+
+// A statistic restandardised by its robust spread: (x - median) / (1.4826 MAD), over the
+// support (finite, non-zero voxels; 0 elsewhere). For a map that is mostly null, the median
+// and the scaled median absolute deviation estimate the null's centre and spread
+// (Rousseeuw and Croux 1993), so a smoothed z map, whose null spread has shrunk, is brought
+// back to unit spread and its thresholds read again as z. Returns {volume, centre, spread}.
+export function standardise(vol, { frame = 0 } = {}) {
+  const n = frameSize(vol.dims), base = frame * n, values = [];
+  for (let s = 0; s < n; s++) { const v = vol.data[base + s]; if (Number.isFinite(v) && v !== 0) values.push(v); }
+  if (!values.length) return { volume: vol, centre: 0, spread: 1 };
+  const median = (a) => { a.sort((p, q) => p - q); const m = a.length >> 1; return a.length % 2 ? a[m] : 0.5 * (a[m - 1] + a[m]); };
+  const centre = median(values.slice());
+  const spread = 1.4826 * median(values.map((v) => Math.abs(v - centre))) || 1;
+  const out = new Float32Array(n);
+  for (let s = 0; s < n; s++) { const v = vol.data[base + s]; out[s] = Number.isFinite(v) && v !== 0 ? (v - centre) / spread : 0; }
+  return { volume: { ...vol, dims: vol.dims.slice(0, 3), data: out, affine: vol.affine.slice() }, centre, spread };
+}
+
+// The peaks of a statistical volume: voxels whose value is beyond the threshold and the
+// largest (in the sign asked) of their 26 neighbours, kept from the strongest down when no
+// stronger peak lies within `minDistance` mm. Returns [{position (mm), voxel, value}].
+export function peaks(vol, { threshold = 3.1, sign = 1, minDistance = 8, max = 40, frame = 0 } = {}) {
+  const [nx, ny, nz] = vol.dims;
+  const d = vol.data, base = frame * nx * ny * nz;
+  const found = [];
+  for (let k = 1; k < nz - 1; k++) for (let j = 1; j < ny - 1; j++) for (let i = 1; i < nx - 1; i++) {
+    const v = sign * d[base + i + nx * (j + ny * k)];
+    if (!(v >= threshold)) continue;
+    let top = true;
+    for (let dk = -1; dk <= 1 && top; dk++) for (let dj = -1; dj <= 1 && top; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj && !dk) continue;
+      if (sign * d[base + (i + di) + nx * ((j + dj) + ny * (k + dk))] > v) { top = false; break; }
+    }
+    if (top) found.push({ voxel: [i, j, k], value: sign * v });
+  }
+  found.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  const kept = [];
+  for (const p of found) {
+    const pos = apply(vol.affine, p.voxel);
+    if (kept.some((q) => Math.hypot(q.position[0] - pos[0], q.position[1] - pos[1], q.position[2] - pos[2]) < minDistance)) continue;
+    kept.push({ ...p, position: pos });
+    if (kept.length >= max) break;
+  }
+  return kept;
+}

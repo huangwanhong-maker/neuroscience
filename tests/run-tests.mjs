@@ -31,6 +31,10 @@ import {
   ATLASES, CITATIONS, listAtlases,
   BRAIN_STRUCTURES, structure, keysOf, structureOfKey, SYSTEMS, LOBE_COLOURS, lobeOf,
   KNOWLEDGE, KNOWLEDGE_PARTS, REFERENCES, FIELDS, knowledgeOf, referencesOf,
+  readEdf, readBrainVision, readSignalTable, channelName, fft, bandpass, analytic, welch, bandPower, peakFrequency, BANDS,
+  averageReference, globalFieldPower, covariance, intervals, electrodeMap,
+  shellModel, shellPotential, sarvas, primaryField, fitSphere, eegLeadField, idealHelmet, decimate, THREE_SHELLS,
+  inverseOperator, projectToSurface, peaks, smooth, standardise,
 } from '../js/index.js';
 
 const { check, assert, skip, done } = suite();
@@ -425,6 +429,15 @@ const DEG = Math.PI / 180;
   for (const s of Object.values(SPACES)) s.citations.forEach((k) => keys.add(k));
   const unknown = [...keys].filter((k) => !CITATIONS[k]);
   assert('atlas: every citation key of the catalogue has its reference', unknown.length === 0, unknown.join(', '));
+  // The notes of theory/ cite by the same keys, in their front matter.
+  const noteKeys = [];
+  for (const f of ['reference-spaces.md', 'parcellations.md', 'head-and-electrodes.md', 'forward-and-inverse.md']) {
+    const text = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'theory', f), 'utf8');
+    const m = /^references: \[(.*)\]$/m.exec(text);
+    if (m) noteKeys.push(...m[1].split(',').map((k) => k.trim()).filter(Boolean));
+  }
+  const missing = noteKeys.filter((k) => !CITATIONS[k]);
+  assert(`atlas: every reference of the notes of theory has its entry (${noteKeys.length})`, noteKeys.length > 20 && missing.length === 0, missing.join(', '));
   assert('atlas: every atlas names a space of the catalogue and parcellations with licences', listAtlases().every((a) => SPACES[a.space] && a.spaces.every((s) => SPACES[s]) && a.parcellations.every((p) => p.licence && p.id && p.name)));
   assert('atlas: the human atlas is in the EBRAINS space with Julich-Brain, Schaefer and Desikan-Killiany', ATLASES.human.space === 'mni152-nlin-2009c-asym' && ATLASES.human.parcellations.map((p) => p.id).join() === 'julich-brain-3.1,schaefer-2018-100-7,schaefer-2018-400-7,desikan-killiany');
 }
@@ -535,6 +548,240 @@ const DEG = Math.PI / 180;
   const papers = Object.entries(REFERENCES).filter(([, r]) => /<\/i> \d+/.test(r));
   const noDoi = papers.filter(([, r]) => !r.includes('doi.org/')).map(([k]) => k);
   assert(`knowledge: every paper carries its DOI (${papers.length} papers)`, noDoi.length <= 3, noDoi.join());
+}
+
+
+// ---- signals: the readers ----------------------------------------------------------------------------
+{
+  // An EDF+ file written here: two signals at 100 Hz in records of 1 s, a 10 Hz sine of
+  // 50 uV and a constant, and an annotation channel (Kemp and Olivan 2003).
+  const rate = 100, records = 3;
+  const pad = (t, w) => (t + ' '.repeat(w)).slice(0, w);
+  const labels = ['EEG Fp1-REF', 'T3', 'EDF Annotations'];
+  const spr = [rate, rate, 30];
+  const ns = labels.length;
+  let head = pad('0', 8) + pad('X X X X', 80) + pad('Startdate 01-JAN-2026 X X test', 80) + pad('01.01.26', 8) + pad('10.20.30', 8) + pad(String(256 * (ns + 1)), 8) + pad('EDF+C', 44) + pad(String(records), 8) + pad('1', 8) + pad(String(ns), 4);
+  head += labels.map((l) => pad(l, 16)).join('') + labels.map(() => pad('', 80)).join('') + labels.map((l, i) => pad(i < 2 ? 'uV' : '', 8)).join('');
+  head += labels.map((l, i) => pad(i < 2 ? '-200' : '-1', 8)).join('') + labels.map((l, i) => pad(i < 2 ? '200' : '1', 8)).join('');
+  head += labels.map(() => pad('-32768', 8)).join('') + labels.map(() => pad('32767', 8)).join('') + labels.map(() => pad('', 80)).join('');
+  head += spr.map((n) => pad(String(n), 8)).join('') + labels.map(() => pad('', 32)).join('');
+  const bytes = new Uint8Array(head.length + records * (2 * rate * 2 + 60));
+  for (let i = 0; i < head.length; i++) bytes[i] = head.charCodeAt(i);
+  const view = new DataView(bytes.buffer);
+  let o = head.length;
+  const digital = (x) => Math.round(((x + 200) / 400) * 65535 - 32768);
+  for (let r = 0; r < records; r++) {
+    for (let k = 0; k < rate; k++) { view.setInt16(o, digital(50 * Math.sin((2 * Math.PI * 10 * (r * rate + k)) / rate)), true); o += 2; }
+    for (let k = 0; k < rate; k++) { view.setInt16(o, digital(7), true); o += 2; }
+    const tal = `+${r}\x14\x14\x00` + (r === 1 ? '+1.5\x150.25\x14stimulus\x14\x00' : '');
+    for (let k = 0; k < 60; k++) bytes[o + k] = k < tal.length ? tal.charCodeAt(k) : 0;
+    o += 60;
+  }
+  const rec = readEdf(bytes);
+  const q = 400 / 65535;
+  let err = 0;
+  rec.channels[0].data.forEach((v, t) => { err = Math.max(err, Math.abs(v - 50 * Math.sin((2 * Math.PI * 10 * t) / rate))); });
+  check('signals: an EDF+ file read back, to its quantisation', err, q, 'uV');
+  assert('signals: EDF+ header: format, rate, duration, start, names', rec.format === 'EDF+C' && rec.rate === 100 && rec.duration === 3 && rec.start === '2026-01-01T10:20:30' && rec.channels.map((c) => c.name).join() === 'Fp1,T7');
+  assert('signals: EDF+ annotations from their time-stamped lists', rec.annotations.length === 1 && rec.annotations[0].text === 'stimulus' && rec.annotations[0].onset === 1.5 && rec.annotations[0].duration === 0.25);
+  // BrainVision, multiplexed 16-bit, with markers.
+  const header = 'Brain Vision Data Exchange Header File Version 1.0\n[Common Infos]\nDataFile=x.eeg\nDataFormat=BINARY\nDataOrientation=MULTIPLEXED\nNumberOfChannels=2\nSamplingInterval=2000\n[Binary Infos]\nBinaryFormat=INT_16\n[Channel Infos]\nCh1=Cz,,0.5,µV\nCh2=Oz,,0.5,µV\n';
+  const data = new Uint8Array(2 * 2 * 4);
+  const dv = new DataView(data.buffer);
+  [[10, -10], [20, -20], [30, -30], [40, -40]].forEach(([a, b], t) => { dv.setInt16(4 * t, a, true); dv.setInt16(4 * t + 2, b, true); });
+  const bv = readBrainVision({ header, data, markers: '[Marker Infos]\nMk1=Stimulus,S  1,3,1,0\n' });
+  assert('signals: BrainVision, scaled by the resolution, with markers', bv.rate === 500 && bv.channels[1].data[3] === -20 && bv.channels[0].name === 'Cz' && bv.annotations[0].text === 'S  1' && Math.abs(bv.annotations[0].onset - 0.004) < 1e-12);
+  const tab = readSignalTable('time,C3,C4\n0,1,2\n0.004,3,4\n0.008,5,6');
+  assert('signals: a table with a time column gives its rate', Math.abs(tab.rate - 250) < 1e-9 && tab.channels.length === 2 && tab.channels[1].data[2] === 6);
+  assert('signals: channel names, written any way, and the old temporal names', channelName('EEG Fp1-REF') === 'Fp1' && channelName('Fc5.') === 'FC5' && channelName('T3') === 'T7' && channelName('t6') === 'P8' && channelName('POz') === 'POz' && channelName('EKG') === null);
+}
+
+// ---- signals: spectra and filters ---------------------------------------------------------------------
+{
+  let seed = 11;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const n = 64, re = Float64Array.from({ length: n }, () => rnd() - 0.5), im = Float64Array.from({ length: n }, () => rnd() - 0.5);
+  const R = Float64Array.from(re), I = Float64Array.from(im);
+  fft(R, I);
+  let e = 0;
+  for (let k = 0; k < n; k++) {
+    let a = 0, b = 0;
+    for (let t = 0; t < n; t++) { const w = (-2 * Math.PI * k * t) / n; a += re[t] * Math.cos(w) - im[t] * Math.sin(w); b += re[t] * Math.sin(w) + im[t] * Math.cos(w); }
+    e = Math.max(e, Math.hypot(a - R[k], b - I[k]));
+  }
+  check('signals: the FFT equals the discrete Fourier transform', e, 1e-12);
+  fft(R, I, true);
+  check('signals: and its inverse returns the signal', Math.max(...re.map((v, t) => Math.abs(v - R[t]))), 1e-14);
+  const rate = 200, T = 2000;
+  const x = Float32Array.from({ length: T }, (_, t) => 30 * Math.sin((2 * Math.PI * 6 * t) / rate) + 10 * Math.sin((2 * Math.PI * 20 * t) / rate));
+  const y = bandpass(x, rate, 15, 25);
+  let amp = 0, leak = 0;
+  for (let t = 400; t < T - 400; t++) { amp = Math.max(amp, Math.abs(y[t])); leak = Math.max(leak, Math.abs(y[t] - 10 * Math.sin((2 * Math.PI * 20 * t) / rate))); }
+  check('signals: a band-pass keeps a sine in its band and removes one outside', leak, 0.05, 'of 10');
+  const env = analytic(Float32Array.from({ length: T }, (_, t) => 7 * Math.sin((2 * Math.PI * 10.5 * t) / rate)), rate).envelope;
+  check('signals: the analytic envelope of a sine is its amplitude, within 1.5 % away from the ends', Math.max(...Array.from(env.slice(300, T - 300), (v) => Math.abs(v - 7))), 0.1);
+  const sine = Float32Array.from({ length: 20000 }, (_, t) => 4 * Math.sin((2 * Math.PI * 10.3 * t) / rate));
+  const psd = welch(sine, rate, { segment: 4 });
+  check('signals: Welch: a sine of amplitude A has power A^2/2', Math.abs(bandPower(psd, 8, 13) - 8) / 8, 0.02);
+  check('signals: and its peak frequency', Math.abs(peakFrequency(psd, 8, 13) - 10.3), 0.05, 'Hz');
+  const noise = Float32Array.from({ length: 40000 }, () => { let s = 0; for (let k = 0; k < 12; k++) s += rnd(); return s - 6; });
+  check('signals: Welch: white noise of unit variance has unit total power', Math.abs(bandPower(welch(noise, rate), 0, 101) - 1), 0.05);
+  assert('signals: the bands tile 1 to 45 Hz (Kane et al. 2017)', BANDS.delta.hi === BANDS.theta.lo && BANDS.theta.hi === BANDS.alpha.lo && BANDS.alpha.hi === BANDS.beta.lo && BANDS.beta.hi === BANDS.gamma.lo && BANDS.alpha.lo === 8 && BANDS.alpha.hi === 13);
+  const chans = [0, 1, 2].map((c) => ({ data: Float32Array.from({ length: 50 }, (_, t) => Math.sin(t * (c + 1)) + 5) }));
+  const ref = averageReference(chans);
+  assert('signals: the average reference leaves a zero mean at every instant', ref[0].data.every((_, t) => Math.abs(ref[0].data[t] + ref[1].data[t] + ref[2].data[t]) < 1e-5));
+  assert('signals: the global field power of equal channels is zero', globalFieldPower([chans[0], chans[0]]).every((v) => v < 1e-6));
+  const C = covariance([{ data: Float32Array.of(1, 2, 3, 4) }, { data: Float32Array.of(2, 4, 6, 8) }]);
+  check('signals: the covariance of two channels', Math.abs(C[1] - 2 * (5 / 3)), 1e-12);
+  const iv = intervals({ duration: 10, annotations: [{ onset: 0, duration: 0, text: 'T0' }, { onset: 4, duration: 2, text: 'T1' }, { onset: 7, duration: 0, text: 'T0' }] }, 'T0');
+  assert('signals: intervals from annotations, until the next when they have no duration', iv.length === 2 && iv[0].to === 4 && iv[1].to === 10);
+}
+
+// ---- forward models -----------------------------------------------------------------------------------
+{
+  const hom = shellModel({ radius: 90, radii: [1], conductivities: [0.33] });
+  check('forward: a homogeneous sphere: T_n = (2n + 1)/n (Frank 1952)', Math.max(...Array.from({ length: 120 }, (_, i) => Math.abs(hom.T[i + 1] - (2 * i + 3) / (i + 1)))), 1e-12);
+  const equal = shellModel({ radius: 90, radii: [0.87, 0.92, 1], conductivities: [0.33, 0.33, 0.33] });
+  check('forward: three shells of one conductivity are a homogeneous sphere', Math.max(...Array.from({ length: 120 }, (_, i) => Math.abs(equal.T[i + 1] / ((2 * i + 3) / (i + 1)) - 1))), 1e-10);
+  const R = 0.09, th = 0.7;
+  check('forward: a dipole at the centre: V = 3 q cos(theta) / (4 pi sigma R^2)', Math.abs(shellPotential(hom, [R * Math.sin(th), 0, R * Math.cos(th)], [0, 0, 0], [0, 0, 1e-8]) / (3e-8 * Math.cos(th) / (4 * Math.PI * 0.33 * R * R)) - 1), 1e-12);
+  // The dipole as the derivative of the point source's potential, numerically.
+  const three = shellModel({ radius: 90, ...THREE_SHELLS });
+  const mono = (rs, r0) => {
+    const RR = 0.09, rr = Math.hypot(...rs), r0n = Math.hypot(...r0), c = (rs[0] * r0[0] + rs[1] * r0[1] + rs[2] * r0[2]) / (rr * r0n);
+    let P0 = 1, P1 = c, s = 0, pw = r0n / RR;
+    for (let n = 1; n <= three.terms; n++) { s += three.T[n] * pw * P1; const P2 = ((2 * n + 1) * c * P1 - n * P0) / (n + 1); P0 = P1; P1 = P2; pw *= r0n / RR; }
+    return s / (4 * Math.PI * 0.33 * RR);
+  };
+  const r0 = [0.02, -0.01, 0.05], q = [0.3e-8, -0.5e-8, 0.8e-8], rs = [0.054, 0, 0.072], h = 1e-7;
+  const numeric = q.reduce((t, qi, a) => { const p = r0.slice(), m = r0.slice(); p[a] += h; m[a] -= h; return t + qi * (mono(rs, p) - mono(rs, m)) / (2 * h); }, 0);
+  check('forward: the dipole is the derivative of the point source along q (three shells)', Math.abs(shellPotential(three, rs, r0, q) / numeric - 1), 1e-8);
+  // The potential of a dipole has no mean over the sphere (no n = 0 term).
+  let mean = 0, peak = 0;
+  const K = 4000, golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < K; i++) {
+    const z = 1 - (2 * (i + 0.5)) / K, r = Math.sqrt(1 - z * z);
+    const v = shellPotential(three, [0.09 * r * Math.cos(golden * i), 0.09 * r * Math.sin(golden * i), 0.09 * z], [0.01, 0.02, 0.03], [0, 1e-8, 0]);
+    mean += v / K; peak = Math.max(peak, Math.abs(v));
+  }
+  check('forward: a dipole\'s potential averages to zero over the scalp', Math.abs(mean) / peak, 1e-3);
+  const top = [0, 0, 0.09], deep = [0, 0, 0.06], radial = [0, 0, 1e-8];
+  const att = shellPotential(three, top, deep, radial) / shellPotential(hom, top, deep, radial);
+  assert(`forward: the skull attenuates the scalp potential (${att.toFixed(2)} of the homogeneous sphere's)`, att > 0.1 && att < 0.6);
+  const rS = [0.03, 0.02, 0.11], r0S = [0.01, 0, 0.06], qS = [1e-8, 2e-8, -0.5e-8], rn = Math.hypot(...rS);
+  const radialOf = (b) => (b[0] * rS[0] + b[1] * rS[1] + b[2] * rS[2]) / rn;
+  check('forward: Sarvas: the radial field is the dipole\'s own, the volume currents adding none', Math.abs(radialOf(sarvas(rS, r0S, qS)) / radialOf(primaryField(rS, r0S, qS)) - 1), 1e-12);
+  assert('forward: Sarvas: a radial dipole makes no field outside the sphere', sarvas(rS, r0S, r0S.map((x) => x * 1e-6)).every((v) => Math.abs(v) < 1e-30));
+  const sph = fitSphere(Array.from({ length: 50 }, (_, i) => { const t = i * 0.7, z = Math.cos(i * 1.3); const r = Math.sqrt(1 - z * z); return [3 + 80 * r * Math.cos(t), -5 + 80 * r * Math.sin(t), 2 + 80 * z]; }));
+  check('forward: a sphere fitted to points of a sphere', Math.hypot(sph.centre[0] - 3, sph.centre[1] + 5, sph.centre[2] - 2) + Math.abs(sph.radius - 80), 1e-9, 'mm');
+  const helmet = idealHelmet([0, 0, 0], 110, { count: 100 });
+  assert('forward: an ideal helmet of radial sensors above the equator', helmet.positions.length === 100 && helmet.positions.every((p, i) => Math.abs(Math.hypot(...p) - 110) < 1e-9 && Math.abs(helmet.orientations[i][2] * 110 - p[2]) < 1e-9));
+  const kept = decimate([[0.5, 0.5, 0.5], [0.6, 0.4, 0.5], [1.5, 0.5, 0.5]], 1);
+  assert('forward: decimation keeps one point a cell, the nearest its centre', kept.join() === '0,2');
+}
+
+// ---- inverse methods ------------------------------------------------------------------------------------
+{
+  let seed = 3;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const model = shellModel({ radius: 90 });
+  const el = idealHelmet([0, 0, 0], 90, { count: 48, lowest: -0.3 }).positions;
+  const S = 400, src = [], nrm = [];
+  while (src.length < S) {
+    const p = [rnd() * 2 - 1, rnd() * 2 - 1, rnd() * 2 - 1], r = Math.hypot(...p);
+    if (r > 1 || r < 0.3) continue;
+    src.push(p.map((x) => x * 72));
+    const o = [rnd() - 0.5, rnd() - 0.5, rnd() - 0.5], on = Math.hypot(...o);
+    nrm.push(o.map((x) => x / on));
+  }
+  const L = eegLeadField(model, [0, 0, 0], el, src, nrm);
+  const op = inverseOperator(L, 48, S, { method: 'sLORETA', snr: 3 });
+  let exact = 0;
+  for (let t = 0; t < 30; t++) {
+    const s = Math.floor(rnd() * S);
+    const J = op.apply(Array.from({ length: 48 }, (_, e) => L[e * S + s]));
+    let b = 0;
+    for (let i = 1; i < S; i++) if (Math.abs(J[i]) > Math.abs(J[b])) b = i;
+    if (b === s) exact++;
+  }
+  assert(`inverse: sLORETA places a single noiseless source exactly (${exact} of 30; Pascual-Marqui 2002)`, exact === 30);
+  // The power of the estimate from a covariance equals the mean square of the estimates.
+  const T = 200;
+  const X = Array.from({ length: 48 }, () => Float64Array.from({ length: T }, () => rnd() - 0.5));
+  for (const row of X) { const m = row.reduce((a, b) => a + b, 0) / T; for (let t = 0; t < T; t++) row[t] -= m; }
+  const C = covariance(X.map((d) => ({ data: d })));
+  const dspm = inverseOperator(L, 48, S, { method: 'dSPM' });
+  const P = dspm.power(C);
+  const ms = new Float64Array(S);
+  for (let t = 0; t < T; t++) { const J = dspm.apply(X.map((row) => row[t])); for (let s = 0; s < S; s++) ms[s] += (J[s] * J[s]) / (T - 1); }
+  check('inverse: the power from a covariance is the mean square of the estimates', Math.max(...Array.from(P, (v, s) => Math.abs(v - ms[s]) / ms[s])), 1e-9);
+}
+
+// ---- statistical maps: peaks and projection ----------------------------------------------------------------
+{
+  const dims = [40, 40, 40], affine = [2, 0, 0, -40, 0, 2, 0, -40, 0, 0, 2, -40, 0, 0, 0, 1];
+  const data = new Float32Array(40 ** 3);
+  const blob = (c, a) => { for (let k = 0; k < 40; k++) for (let j = 0; j < 40; j++) for (let i = 0; i < 40; i++) data[i + 40 * (j + 40 * k)] += a * Math.exp(-((i - c[0]) ** 2 + (j - c[1]) ** 2 + (k - c[2]) ** 2) / 8); };
+  blob([10, 20, 20], 6); blob([30, 20, 20], -5); blob([20, 32, 12], 4);
+  const vol = volume({ dims, data, affine });
+  const pos = peaks(vol, { threshold: 3.1 }), neg = peaks(vol, { threshold: 3.1, sign: -1 });
+  assert('maps: the peaks of a statistic, strongest first, and its negative ones apart', pos.length === 2 && pos[0].position.join() === '-20,0,0' && pos[1].position.join() === '0,24,-16' && neg.length === 1 && neg[0].value === -5 && neg[0].position.join() === '20,0,0');
+  const ramp = volume({ dims, affine, data: Float32Array.from({ length: 40 ** 3 }, (_, v) => Math.floor(v / 1600) * 2 - 40) });
+  const proj = projectToSurface(ramp, Float32Array.of(0, 0, 10), Float32Array.of(0, 0, 1), { depths: [0, 1, 2, 3] });
+  check('maps: a surface reads a volume along its inward normal, keeping the largest value', Math.abs(proj[0] - 10), 1e-5);
+}
+
+// ---- statistical maps: smoothing and restandardising ------------------------------------------------------------
+{
+  // A point spreads into a Gaussian whose variance along each axis is (fwhm)^2 / (8 ln 2);
+  // on a background of 1 (the support is the whole grid) the excess is the point's kernel.
+  const n = 41, dims = [n, n, n], affine = [2, 0, 0, -40, 0, 3, 0, -60, 0, 0, 1.5, -30, 0, 0, 0, 1];
+  const data = new Float32Array(n ** 3).fill(1);
+  data[20 + n * (20 + n * 20)] = 1001;
+  const sm = smooth(volume({ dims, data, affine }), 8);
+  const moments = [0, 0, 0];
+  let mass = 0;
+  for (let k = 0; k < n; k++) for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const e = sm.data[i + n * (j + n * k)] - 1;
+    mass += e;
+    moments[0] += e * ((i - 20) * 2) ** 2; moments[1] += e * ((j - 20) * 3) ** 2; moments[2] += e * ((k - 20) * 1.5) ** 2;
+  }
+  const want = 64 / (8 * Math.LN2);
+  check('volume: smoothing spreads a point into a Gaussian of the stated width, in millimetres on each axis', Math.max(...moments.map((m) => Math.abs(m / mass - want) / want)), 0.02);
+  // A constant over a mask stays that constant, up to the mask's edge, and 0 outside it.
+  const ball = new Float32Array(n ** 3);
+  for (let k = 0; k < n; k++) for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) if ((i - 20) ** 2 + (j - 20) ** 2 + (k - 20) ** 2 <= 144) ball[i + n * (j + n * k)] = 2.5;
+  const sb = smooth(volume({ dims, data: ball, affine }), 6);
+  let worst = 0, leak = 0;
+  for (let s = 0; s < ball.length; s++) { if (ball[s]) worst = Math.max(worst, Math.abs(sb.data[s] - 2.5)); else leak = Math.max(leak, Math.abs(sb.data[s])); }
+  check('volume: smoothing is confined to the support, so a constant stays itself to the mask’s edge', worst + leak, 1e-5);
+  // With the outside counted as 0, the centre of the ball keeps its value and the edge is pulled down.
+  const sz = smooth(volume({ dims, data: ball, affine }), 6, { edge: 'zero' });
+  const centre = sz.data[20 + n * (20 + n * 20)], rim = sz.data[32 + n * (20 + n * 20)];
+  assert(`volume: smoothing with the outside as 0 keeps the inside and pulls the edge down (${centre.toFixed(3)}, ${rim.toFixed(3)})`, Math.abs(centre - 2.5) < 1e-3 && rim < 0.8 * 2.5 && rim > 0.3 * 2.5);
+  // Standardising: a map of N(3, 2^2) noise comes back with centre 3, spread 2, and unit spread.
+  const rand = seeded(7), gauss = () => Math.sqrt(-2 * Math.log(rand() || 1e-12)) * Math.cos(2 * Math.PI * rand());
+  const noise = volume({ dims: [40, 40, 40], affine: identity(), data: Float32Array.from({ length: 40 ** 3 }, () => 3 + 2 * gauss()) });
+  const st = standardise(noise);
+  const z = Array.from(st.volume.data);
+  const sd = Math.sqrt(z.reduce((a, v) => a + v * v, 0) / z.length);
+  check('maps: a map restandardised by its median and scaled MAD has the noise’s centre, spread, and unit spread', Math.max(Math.abs(st.centre - 3), Math.abs(st.spread - 2), Math.abs(sd - 1)), 0.03);
+}
+
+// ---- real recordings: the alpha rhythm (skipped when the data are not fetched) --------------------------------------
+{
+  const dir = resolve(CACHE, 'physionet-eegmmidb');
+  const open = resolve(dir, 'S001R01.edf'), closed = resolve(dir, 'S001R02.edf');
+  if (existsSync(open) && existsSync(closed)) {
+    const a = readEdf(readFileSync(open)), b = readEdf(readFileSync(closed));
+    const power = (rec, name) => bandPower(welch(rec.channels.find((c) => c.name === name).data, rec.rate), 8, 13);
+    assert('recordings: EEGMMIDB: 64 channels of the 10-10 system at 160 Hz, every one named', a.channels.length === 64 && a.rate === 160 && a.channels.every((c) => c.name));
+    const ratio = power(b, 'O1') / power(a, 'O1');
+    assert(`recordings: closing the eyes raises the occipital alpha rhythm (O1, ${ratio.toFixed(1)} times; Berger 1929)`, ratio > 4);
+    assert('recordings: with the eyes closed, alpha is stronger at the back of the head than at the front (O1, Oz, O2 over Fp1, Fpz, Fp2)', ['O1', 'Oz', 'O2'].reduce((t, n) => t + power(b, n), 0) > 2 * ['Fp1', 'Fpz', 'Fp2'].reduce((t, n) => t + power(b, n), 0));
+    const f = peakFrequency(welch(b.channels.find((c) => c.name === 'Oz').data, b.rate), 7, 14);
+    assert(`recordings: the alpha peak lies between 8 and 13 Hz (${f.toFixed(2)} Hz)`, f > 8 && f < 13);
+  } else skip('recordings: the alpha rhythm of EEGMMIDB', 'fetch physionet-eegmmidb');
 }
 
 done();

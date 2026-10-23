@@ -465,3 +465,16 @@ export function projectToMask(point, centre, mask, { step = 0.5 } = {}) {
 }
 
 export { direction as headDirection, DEG };
+
+// The positions of a placed system by name (as tenTwenty returns them, with the landmarks),
+// together with the positions below its ring that recordings name: T9 and T10 at the
+// preauricular points, near which they lie at the landmarks' level; A1, A2 (the ear lobes)
+// and M1, M2 (the mastoids) there too; Iz at the inion. These are approximations: the
+// 10-5 system places them on arcs below the landmarks (Oostenveld and Praamstra 2001).
+export function electrodeMap(placed) {
+  const at = new Map(placed.positions.map((p) => [p.name, p.position]));
+  const lpa = at.get('LPA') || (placed.landmarks && placed.landmarks.lpa), rpa = at.get('RPA') || (placed.landmarks && placed.landmarks.rpa);
+  const inion = at.get('Iz') || (placed.landmarks && placed.landmarks.inion);
+  for (const [name, p] of [['T9', lpa], ['T10', rpa], ['A1', lpa], ['A2', rpa], ['M1', lpa], ['M2', rpa], ['Iz', inion]]) if (p && !at.has(name)) at.set(name, p);
+  return at;
+}

@@ -162,3 +162,46 @@ export function toUint8(data, [low, high]) {
 
 // The voxel sizes of a volume, in millimetres.
 export const spacingOf = (vol) => voxelSizes(vol.affine);
+
+// A volume smoothed by a Gaussian of the given full width at half maximum (mm), whose
+// standard deviation is fwhm / sqrt(8 ln 2), applied along the three axes in turn and
+// cut off at 3 standard deviations (Friston et al. 2007, ch. 2, on spatial smoothing).
+// The support is the voxels that are finite and not 0 (a statistic is 0 outside its
+// mask); voxels outside it stay 0. At the support's edge, `edge` chooses: 'zero' counts the
+// outside as 0, as plain convolution does (SPM's smoothing), which pulls the edge towards 0
+// and is the cautious choice for a statistic, whose edge voxels would otherwise keep more
+// of their noise; 'average' takes the Gaussian average over the support alone (normalised
+// convolution, Knutsson and Westin 1993), which keeps a constant constant to the edge.
+// One frame; Float32 out.
+export function smooth(vol, fwhm, { frame = 0, edge = 'average' } = {}) {
+  const dims = vol.dims.slice(0, 3), [nx, ny] = dims, n = frameSize(dims), base = frame * n;
+  const inside = new Uint8Array(n);
+  let x = new Float64Array(n), w = new Float64Array(n);
+  for (let s = 0; s < n; s++) {
+    const v = vol.data[base + s];
+    if (Number.isFinite(v) && v !== 0) { inside[s] = 1; x[s] = v; w[s] = 1; }
+  }
+  const spacing = voxelSizes(vol.affine), strides = [1, nx, nx * ny];
+  if (fwhm > 0) for (let a = 0; a < 3; a++) {
+    const sigma = fwhm / Math.sqrt(8 * Math.LN2) / spacing[a], R = Math.ceil(3 * sigma);
+    if (R < 1) continue;
+    const k = Float64Array.from({ length: 2 * R + 1 }, (_, i) => Math.exp(-0.5 * ((i - R) / sigma) ** 2));
+    const L = dims[a], st = strides[a], X = new Float64Array(n), W = new Float64Array(n);
+    for (let s = 0; s < n; s++) {
+      const p = Math.floor(s / st) % L, lo = Math.max(-R, -p), hi = Math.min(R, L - 1 - p);
+      let sx = 0, sw = 0;
+      for (let i = lo; i <= hi; i++) { const t = s + i * st, g = k[i + R]; sx += g * x[t]; sw += g * w[t]; }
+      X[s] = sx; W[s] = sw;
+    }
+    x = X; w = W;
+  }
+  const out = new Float32Array(n);
+  // Under 'zero' the weight divides out only the kernel's truncation at the grid's border.
+  let full = 1;
+  if (edge === 'zero') for (let a = 0; a < 3; a++) {
+    const sigma = fwhm / Math.sqrt(8 * Math.LN2) / spacing[a], R = Math.ceil(3 * sigma);
+    if (fwhm > 0 && R >= 1) { let t = 0; for (let i = -R; i <= R; i++) t += Math.exp(-0.5 * (i / sigma) ** 2); full *= t; }
+  }
+  for (let s = 0; s < n; s++) out[s] = inside[s] && w[s] > 1e-12 ? x[s] / (edge === 'zero' ? full : w[s]) : 0;
+  return { ...vol, dims, data: out, affine: vol.affine.slice() };
+}
