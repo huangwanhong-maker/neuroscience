@@ -17,3 +17,4 @@ The cheapest place to write a thought down about this domain. An idea here may b
 | 2026-10-22 | [Parcellations in the lattice of partitions](2026-10-22-parcellations-in-the-lattice-of-partitions.md) | seed |
 | 2026-10-22 | [From scalp maps to sources](2026-10-22-from-scalp-maps-to-sources.md) | promoted |
 | 2026-10-23 | [A survey of spiking neuron models, learning rules and quantum neuromorphic models](2026-10-23-a-survey-of-spiking-models.md) | seed |
+| 2026-10-23 | [Spiking networks compiled to devices](2026-10-23-spiking-networks-on-devices.md) | seed |

@@ -110,6 +110,6 @@ calx (`random`, `linalg`, `integrators`, `special_functions`, `quadrature`, `sol
 
 1. **Models from the survey of recent work** still to be written (multi-compartment and dendritic neurons, neural masses, the Loihi neurons, the Poisson GLM; learning rules such as e-prop, three-factor and burst-dependent plasticity), and more quantum neurons: open quantum Hopfield networks (Rotondo et al. 2018), whose jump rates depend on the other spins, and Ising-like networks.
 2. **Precise spike times** between grid points (Hanuschkin et al. 2010) for models where they matter.
-3. **Kernels in calx's IR**, so that the update and the delivery run on accelerators.
+3. **Compilation to devices**, planned and not built: networks lowered through calx's IR to GPUs, neuromorphic chips (Loihi 2, SpiNNaker 2, BrainScaleS-2) and quantum processors, with this simulator as the reference every device is checked against ([idea](../development/ideas/2026-10-23-spiking-networks-on-devices.md)).
 4. **Python bindings** (nanobind), beside the command line.
 5. **Distributed simulation** across processes, by the same windows of the shortest delay.
