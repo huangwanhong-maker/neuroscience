@@ -1,6 +1,6 @@
 ---
 title: From scalp maps to sources
-status: seed
+status: promoted
 date: 2026-10-22
 ---
 
@@ -13,3 +13,5 @@ The head module interpolates potentials over the scalp and shows them above the 
 - the parcellations give the regions over which source power is summed, which is what "band power by region" means.
 
 A first step that needs no inverse: the surface Laplacian of the spherical spline (Perrin et al. 1989 give it in closed form), which sharpens the scalp map toward the sources beneath.
+
+*Promoted (2026-10-23):* the forward models, inverse estimates and recordings are the modules `signals`, `forward` and `inverse` ([theory](../../theory/forward-and-inverse.md)), drawn by the Brain Atlas's Signals mode (the infrastructure's ADR 0034).

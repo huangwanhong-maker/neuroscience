@@ -10,6 +10,7 @@ Decisions that concern only this domain. Decisions that shape The Science Infras
 | No. | Decision | Status |
 |---|---|---|
 | [0001](0001-the-model-of-a-brain-atlas.md) | The model of a brain atlas: spaces, parcellations, maps and the head, read from bytes | Accepted |
+| [0002](0002-spiking-networks-in-cpp.md) | Networks of spiking neurons, in C++ on the foundations | Accepted |
 
 ## 2. Template
 

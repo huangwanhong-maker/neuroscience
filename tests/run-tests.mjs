@@ -15,7 +15,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import zlib from 'node:zlib';
 
-import { suite, seeded, CACHE } from '../../../development/tools/checks.mjs';
+import { suite, seeded, cppChecks, CACHE } from '../../../development/tools/checks.mjs';
 import {
   identity, fromRows, fromOriginSpacing, compose, invert, apply, axisCodes, toRAS, reorient, nearlyEqual, voxelSizes,
   volume, sampleVoxel, sample, worldBounds, resample, voxelVolume, robustRange, toUint8,
@@ -37,7 +37,7 @@ import {
   inverseOperator, projectToSurface, peaks, smooth, standardise,
 } from '../js/index.js';
 
-const { check, assert, skip, done } = suite();
+const { check, assert, skip, done, lines: suiteLines } = suite();
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => JSON.parse(readFileSync(resolve(here, 'fixtures', name), 'utf8'));
 const text = (name) => readFileSync(resolve(here, 'fixtures', name), 'utf8');
@@ -431,7 +431,7 @@ const DEG = Math.PI / 180;
   assert('atlas: every citation key of the catalogue has its reference', unknown.length === 0, unknown.join(', '));
   // The notes of theory/ cite by the same keys, in their front matter.
   const noteKeys = [];
-  for (const f of ['reference-spaces.md', 'parcellations.md', 'head-and-electrodes.md', 'forward-and-inverse.md']) {
+  for (const f of ['reference-spaces.md', 'parcellations.md', 'head-and-electrodes.md', 'forward-and-inverse.md', 'spiking-networks.md']) {
     const text = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '..', 'theory', f), 'utf8');
     const m = /^references: \[(.*)\]$/m.exec(text);
     if (m) noteKeys.push(...m[1].split(',').map((k) => k.trim()).filter(Boolean));
@@ -783,5 +783,8 @@ const DEG = Math.PI / 180;
     assert(`recordings: the alpha peak lies between 8 and 13 Hz (${f.toFixed(2)} Hz)`, f > 8 && f < 13);
   } else skip('recordings: the alpha rhythm of EEGMMIDB', 'fetch physionet-eegmmidb');
 }
+
+// ---- the domain's C++: networks of spiking neurons (snn/), on calx and physis -------------------------------
+cppChecks({ assert, skip, lines: suiteLines }, { project: resolve(dirname(fileURLToPath(import.meta.url)), '..'), name: 'neuroscience' });
 
 done();
