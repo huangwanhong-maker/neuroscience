@@ -17,6 +17,12 @@
 // - lif_escape:    a leaky integrate-and-fire neuron that fires by escape noise, at the
 //                  rate rho_0 exp((V - V_th) / Delta_V) (Gerstner and Kistler 2002, §5.3;
 //                  Jolivet et al. 2006).
+// - adlif:         the adaptive exponential model without its exponential: a linear
+//                  adaptation current, integrated exactly (Brette and Gerstner 2005; trained in
+//                  deep spiking networks by Bittar and Garner 2022, Baronig et al. 2025).
+// - gif:           the generalised integrate-and-fire model with escape noise, a
+//                  spike-triggered current and a moving threshold, each two exponentials, as
+//                  fitted to single cells (Mensi et al. 2012; Pozzorini et al. 2013, 2015).
 
 #pragma once
 
@@ -407,6 +413,140 @@ struct LifEscape {
   static void jump(const Params& p, State<n>& x) { x[0] = p.V_reset; }
   static double dwell(const Params& p) { return p.t_ref; }
   static State<n> initial(const Params& p) { return {p.E_L}; }
+};
+
+// ---- adlif --------------------------------------------------------------------------------------------
+// The adaptive leaky integrate-and-fire neuron: the adaptive exponential model without its
+// exponential (Brette and Gerstner 2005), C V' = -g_L (V - E_L) - w + I, tau_w w' = a (V - E_L) - w,
+// at threshold V <- V_reset, w <- w + b. Linear between spikes, it is integrated exactly; with
+// strong subthreshold coupling a its eigenvalues are complex and it resonates. Deep spiking
+// networks train it as "AdLIF" (Bittar and Garner 2022) and integrate it by forward Euler
+// steps, which are unstable for some of its parameters; Baronig, Ferrand, Sabathiel and
+// Legenstein (2025) replace them by symplectic Euler steps. The exact propagator is stable
+// wherever the system is.
+struct Adlif {
+  static constexpr std::string_view name = "adlif";
+  static constexpr std::string_view summary = "Adaptive leaky integrate-and-fire neuron: a linear adaptation current coupled to the potential, integrated exactly; it resonates when the coupling is strong.";
+  static constexpr std::string_view citation =
+      "Brette and Gerstner 2005, J. Neurophysiol. 94, 3637-3642; Bittar and Garner 2022, Front. Neurosci. 16, 865897; Baronig, Ferrand, Sabathiel and Legenstein 2025, Nat. Commun. 16, 5776";
+  static constexpr std::size_t n = 4;
+  struct Params {
+    double C_m = 200 * unit::pF, g_L = 10 * unit::nS, E_L = -70 * unit::mV, V_th = -50 * unit::mV, V_reset = -58 * unit::mV;
+    double t_ref = 2 * unit::ms, tau_w = 100 * unit::ms, a = 2 * unit::nS, b = 20 * unit::pA;
+    double tau_syn_ex = 2 * unit::ms, tau_syn_in = 2 * unit::ms, I_e = 0;
+  };
+  static constexpr std::array<Parameter<Params>, 12> parameters{{
+      {"C_m", &Params::C_m, dim::capacitance, "membrane capacitance"},
+      {"g_L", &Params::g_L, dim::conductance, "leak conductance"},
+      {"E_L", &Params::E_L, dim::voltage, "resting potential"},
+      {"V_th", &Params::V_th, dim::voltage, "threshold"},
+      {"V_reset", &Params::V_reset, dim::voltage, "reset potential"},
+      {"t_ref", &Params::t_ref, dim::time, "refractory period"},
+      {"tau_w", &Params::tau_w, dim::time, "time constant of the adaptation current"},
+      {"a", &Params::a, dim::conductance, "subthreshold coupling of the adaptation to the potential"},
+      {"b", &Params::b, dim::current, "jump of the adaptation current at each spike"},
+      {"tau_syn_ex", &Params::tau_syn_ex, dim::time, "decay time of the excitatory current"},
+      {"tau_syn_in", &Params::tau_syn_in, dim::time, "decay time of the inhibitory current"},
+      {"I_e", &Params::I_e, dim::current, "constant external current"},
+  }};
+  static constexpr std::array<Component, n> components{{
+      {"V", dim::voltage, "membrane potential"}, {"w", dim::current, "adaptation current"},
+      {"I_ex", dim::current, "excitatory synaptic current"}, {"I_in", dim::current, "inhibitory synaptic current"}}};
+  static constexpr std::array<double, n> scale{1e-3, 1e-10, 1e-10, 1e-10};
+  static constexpr Dimension input = dim::current;
+  static constexpr double input_scale = 1e-10;
+  static constexpr std::array<Receptor, 2> receptors{{
+      {"excitatory", 2, "a jump of the excitatory current (A, positive)"}, {"inhibitory", 3, "a jump of the inhibitory current (A, negative)"}}};
+  static constexpr std::array<bool, n> held{true, false, false, false};
+  static constexpr Method method = Method::exact;
+  static void system(const Params& p, pd::Matrix& A, State<n>& B, State<n>& c) {
+    A(0, 0) = -p.g_L / p.C_m; A(0, 1) = -1 / p.C_m; A(0, 2) = 1 / p.C_m; A(0, 3) = 1 / p.C_m;
+    A(1, 0) = p.a / p.tau_w; A(1, 1) = -1 / p.tau_w;
+    A(2, 2) = -1 / p.tau_syn_ex;
+    A(3, 3) = -1 / p.tau_syn_in;
+    B = {1 / p.C_m, 0, 0, 0};
+    c = {(p.g_L * p.E_L + p.I_e) / p.C_m, -p.a * p.E_L / p.tau_w, 0, 0};
+  }
+  static bool guard(const Params& p, const State<n>& x) { return x[0] >= p.V_th; }
+  static void jump(const Params& p, State<n>& x) { x[0] = p.V_reset; x[1] += p.b; }
+  static double dwell(const Params& p) { return p.t_ref; }
+  static State<n> initial(const Params& p) { return {p.E_L, 0, 0, 0}; }
+};
+
+// ---- gif --------------------------------------------------------------------------------------------
+// The generalised integrate-and-fire model with escape noise, the model fitted to single
+// cells by Mensi et al. (2012) and Pozzorini et al. (2013, 2015): C V' = -g_L (V - E_L) + I - eta(t),
+// firing at the rate lambda_0 exp((V - V_T(t)) / Delta_V) with V_T(t) = V_T* + gamma(t); after a
+// spike V <- V_reset for t_ref. The spike-triggered current eta and the moving threshold gamma
+// are kernels, here sums of two exponentials each, so that the model stays linear between
+// spikes and is integrated exactly: at a spike eta_k jumps by q_eta_k and gamma_k by q_gamma_k.
+// The defaults are illustrative; in practice every parameter is fitted to one cell.
+struct Gif {
+  static constexpr std::string_view name = "gif";
+  static constexpr std::string_view summary = "Generalised integrate-and-fire neuron with escape noise: a spike-triggered current and a moving threshold, each a sum of two exponential kernels.";
+  static constexpr std::string_view citation =
+      "Mensi et al. 2012, J. Neurophysiol. 107, 1756-1775; Pozzorini et al. 2013, Nat. Neurosci. 16, 942-948; Pozzorini et al. 2015, PLoS Comput. Biol. 11, e1004275";
+  static constexpr std::size_t n = 7;
+  struct Params {
+    double C_m = 150 * unit::pF, g_L = 6 * unit::nS, E_L = -70 * unit::mV, V_reset = -55 * unit::mV, t_ref = 4 * unit::ms;
+    double V_T_star = -50 * unit::mV, Delta_V = 1 * unit::mV, lambda_0 = 1 * unit::kHz;
+    double tau_eta_1 = 10 * unit::ms, tau_eta_2 = 100 * unit::ms, q_eta_1 = 20 * unit::pA, q_eta_2 = 5 * unit::pA;
+    double tau_gamma_1 = 10 * unit::ms, tau_gamma_2 = 100 * unit::ms, q_gamma_1 = 5 * unit::mV, q_gamma_2 = 1 * unit::mV;
+    double tau_syn_ex = 2 * unit::ms, tau_syn_in = 2 * unit::ms, I_e = 0;
+  };
+  static constexpr std::array<Parameter<Params>, 19> parameters{{
+      {"C_m", &Params::C_m, dim::capacitance, "membrane capacitance"},
+      {"g_L", &Params::g_L, dim::conductance, "leak conductance"},
+      {"E_L", &Params::E_L, dim::voltage, "resting potential"},
+      {"V_reset", &Params::V_reset, dim::voltage, "reset potential"},
+      {"t_ref", &Params::t_ref, dim::time, "absolute refractory period, the potential held at V_reset"},
+      {"V_T_star", &Params::V_T_star, dim::voltage, "baseline of the moving threshold"},
+      {"Delta_V", &Params::Delta_V, dim::voltage, "softness of the threshold"},
+      {"lambda_0", &Params::lambda_0, dim::frequency, "rate of firing at the threshold"},
+      {"tau_eta_1", &Params::tau_eta_1, dim::time, "time constant of the first spike-triggered current"},
+      {"tau_eta_2", &Params::tau_eta_2, dim::time, "time constant of the second spike-triggered current"},
+      {"q_eta_1", &Params::q_eta_1, dim::current, "jump of the first spike-triggered current (positive: hyperpolarising)"},
+      {"q_eta_2", &Params::q_eta_2, dim::current, "jump of the second spike-triggered current"},
+      {"tau_gamma_1", &Params::tau_gamma_1, dim::time, "time constant of the first threshold component"},
+      {"tau_gamma_2", &Params::tau_gamma_2, dim::time, "time constant of the second threshold component"},
+      {"q_gamma_1", &Params::q_gamma_1, dim::voltage, "jump of the first threshold component"},
+      {"q_gamma_2", &Params::q_gamma_2, dim::voltage, "jump of the second threshold component"},
+      {"tau_syn_ex", &Params::tau_syn_ex, dim::time, "decay time of the excitatory current"},
+      {"tau_syn_in", &Params::tau_syn_in, dim::time, "decay time of the inhibitory current"},
+      {"I_e", &Params::I_e, dim::current, "constant external current"},
+  }};
+  static constexpr std::array<Component, n> components{{
+      {"V", dim::voltage, "membrane potential"}, {"eta_1", dim::current, "first spike-triggered current"},
+      {"eta_2", dim::current, "second spike-triggered current"}, {"gamma_1", dim::voltage, "first threshold component"},
+      {"gamma_2", dim::voltage, "second threshold component"}, {"I_ex", dim::current, "excitatory synaptic current"},
+      {"I_in", dim::current, "inhibitory synaptic current"}}};
+  static constexpr std::array<double, n> scale{1e-3, 1e-11, 1e-11, 1e-3, 1e-3, 1e-10, 1e-10};
+  static constexpr Dimension input = dim::current;
+  static constexpr double input_scale = 1e-10;
+  static constexpr std::array<Receptor, 2> receptors{{
+      {"excitatory", 5, "a jump of the excitatory current (A, positive)"}, {"inhibitory", 6, "a jump of the inhibitory current (A, negative)"}}};
+  static constexpr std::array<bool, n> held{true, false, false, false, false, false, false};
+  static constexpr Method method = Method::exact;
+  static void system(const Params& p, pd::Matrix& A, State<n>& B, State<n>& c) {
+    A(0, 0) = -p.g_L / p.C_m; A(0, 1) = -1 / p.C_m; A(0, 2) = -1 / p.C_m; A(0, 5) = 1 / p.C_m; A(0, 6) = 1 / p.C_m;
+    A(1, 1) = -1 / p.tau_eta_1;
+    A(2, 2) = -1 / p.tau_eta_2;
+    A(3, 3) = -1 / p.tau_gamma_1;
+    A(4, 4) = -1 / p.tau_gamma_2;
+    A(5, 5) = -1 / p.tau_syn_ex;
+    A(6, 6) = -1 / p.tau_syn_in;
+    B = {1 / p.C_m, 0, 0, 0, 0, 0, 0};
+    c = {(p.g_L * p.E_L + p.I_e) / p.C_m, 0, 0, 0, 0, 0, 0};
+  }
+  static bool guard(const Params&, const State<n>&) { return false; }
+  static double hazard(const Params& p, const State<n>& x) { return p.lambda_0 * std::exp((x[0] - p.V_T_star - x[3] - x[4]) / p.Delta_V); }
+  static void jump(const Params& p, State<n>& x) {
+    x[0] = p.V_reset;
+    x[1] += p.q_eta_1; x[2] += p.q_eta_2;
+    x[3] += p.q_gamma_1; x[4] += p.q_gamma_2;
+  }
+  static double dwell(const Params& p) { return p.t_ref; }
+  static State<n> initial(const Params& p) { return {p.E_L, 0, 0, 0, 0, 0, 0}; }
 };
 
 }  // namespace neuroscience::snn::models

@@ -8,6 +8,8 @@ date: 2026-10-23
 
 *Compiled on 2026-10-23 for the planning of the `snn` module (decision 0002), at the user's request for a survey of new models, by a research agent of the session: every DOI resolved on Crossref and every arXiv identifier on arXiv; equations tagged by how they were checked (§0). It is the plan of what the module implements next; each model, when written, cites its paper in its code and is checked against the paper before its tests are written, as §0 advises.*
 
+*Written (2026-10-23):* GIF (§2.2), AdLIF with its exact flow (§1.3), BRF (§1.4), Izhikevich's dimensional model, Wang–Buzsáki, Morris–Lecar and FitzHugh–Nagumo (§2.4), as `snn`'s `gif`, `adlif`, `brf`, `izhikevich_2007`, `wang_buzsaki`, `morris_lecar` and `fitzhugh_nagumo`. BRF's equations were read from the paper; the [K] equations of the classical models were not re-read, but checked by the bifurcations their classes require, computed from the models' own equations and then met by the simulations: a saddle-node at 0.160 µA/cm² for Wang–Buzsáki and at 39.96 µA/cm² for the [K?] Morris–Lecar SNIC set, and a Hopf bifurcation at 93.86 µA/cm² for its Hopf set ([theory](../../theory/spiking-networks.md), §7).
+
 ## 0. Method and Conventions
 
 **How the survey was checked (2026-10-23).**

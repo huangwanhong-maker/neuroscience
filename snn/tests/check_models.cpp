@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <numbers>
+#include <type_traits>
 #include <string>
 #include <vector>
 
@@ -315,6 +317,152 @@ int main() {
     };
     const auto coarse = trace(0.1e-3, pd::Method::dopri5), fine = trace(0.001e-3, pd::Method::rk4);
     s.check("models: lif_cond_exp by Dormand-Prince at 0.1 ms against RK4 at 1 us, sampled each ms", calx::verification::max_difference(coarse, fine), 1e-7, "V");
+  }
+  // ---- adlif: the free response is the exponential of its 2x2 system ----------------------------------------------
+  {
+    // y = (V - E_L, w), y' = M y, M = [[-g_L / C, -1 / C], [a / tau_w, -1 / tau_w]]; with
+    // mu = tr M / 2 and nu^2 = mu^2 - det M, e^{Mt} = e^{mu t} (cosh(nu t) + sinh(nu t) / nu (M - mu)),
+    // and with a = 20 nS, nu is imaginary: the neuron resonates.
+    models::Adlif::Params p;
+    p.a = 20 * u::nS;
+    Network net({h, 1, 1});
+    auto& pop = net.add<models::Adlif>("n", 1, p);
+    pop.set(0, 0, p.E_L + 10 * u::mV);
+    auto& rec = net.record_state(pop, {0}, {0, 1});
+    net.run(0.3);
+    const double m11 = -p.g_L / p.C_m, m12 = -1 / p.C_m, m21 = p.a / p.tau_w, m22 = -1 / p.tau_w;
+    const double mu = (m11 + m22) / 2, det = m11 * m22 - m12 * m21, nu2 = mu * mu - det, y0 = 10 * u::mV;
+    double worst_V = 0, worst_w = 0;
+    for (std::size_t k = 0; k < rec.times.size(); k++) {
+      const double t = rec.times[k] * h, om = std::sqrt(-nu2);
+      const double c = std::cos(om * t), sn = std::sin(om * t) / om, e = std::exp(mu * t);
+      const double V = e * (c + sn * (m11 - mu)) * y0, w = e * sn * m21 * y0;
+      worst_V = std::max(worst_V, std::fabs(rec.values[0][2 * k] - p.E_L - V) / y0);
+      worst_w = std::max(worst_w, std::fabs(rec.values[0][2 * k + 1] - w) / (p.a * y0));
+    }
+    s.require("models: adlif with a = 20 nS has complex eigenvalues (it resonates)", nu2 < 0, calx::verification::shortest(std::sqrt(-nu2) / (2 * std::numbers::pi)) + " Hz");
+    s.check("models: adlif's free response against the exponential of its system (V, relative to 10 mV)", worst_V, 1e-12);
+    s.check("models: adlif's free response against the exponential of its system (w, relative to a 10 mV)", worst_w, 1e-12);
+    // At each spike the adaptation current jumps by b: the intervals lengthen.
+    const auto t = spikes_under<models::Adlif>(models::Adlif::Params{}, 400 * u::pA, 1.0, h);
+    const auto d = intervals(t);
+    s.require("models: adlif adapts: its intervals lengthen and settle", d.size() > 5 && d.back() > 1.5 * d.front() && std::fabs(d.back() / d[d.size() - 2] - 1) < 0.02,
+              std::to_string(t.size()) + " spikes, first interval " + calx::verification::shortest(d.empty() ? 0 : d.front() * 1e3) + " ms, last " + calx::verification::shortest(d.empty() ? 0 : d.back() * 1e3) + " ms");
+  }
+  // ---- gif: without kernels it is lif_escape, spike for spike; its kernels decay as their closed forms --------------
+  {
+    models::Gif::Params g;
+    g.C_m = 250 * u::pF;
+    g.g_L = 25 * u::nS;  // tau_m = 10 ms
+    g.E_L = g.V_reset = -70 * u::mV;
+    g.t_ref = 2 * u::ms;
+    g.V_T_star = -55 * u::mV;
+    g.Delta_V = 2 * u::mV;
+    g.lambda_0 = 20 * u::Hz;
+    g.q_eta_1 = g.q_eta_2 = g.q_gamma_1 = g.q_gamma_2 = 0;
+    auto run = [&](auto tag, const auto& params) {
+      using M = typename decltype(tag)::type;
+      Network net({h, 7, 4});
+      auto& pop = net.add<M>("n", 200, params);
+      auto d = std::make_unique<CurrentInput>();
+      d->target = &pop;
+      d->amplitude = 400 * u::pA;
+      net.add_device(std::move(d));
+      auto& rec = net.record_spikes(pop);
+      net.run(1.0);
+      return rec.spikes;
+    };
+    const auto a = run(std::type_identity<models::Gif>{}, g), b = run(std::type_identity<models::LifEscape>{}, models::LifEscape::Params{});
+    bool same = a.size() == b.size() && a.size() > 1000;
+    for (std::size_t i = 0; same && i < a.size(); i++) same = a[i].time == b[i].time && a[i].gid == b[i].gid;
+    s.require("models: gif without kernels fires spike for spike as lif_escape, under the same seed", same,
+              std::to_string(a.size()) + " and " + std::to_string(b.size()) + " spikes");
+
+    const models::Gif::Params p;
+    Network net({h, 1, 1});
+    auto& pop = net.add<models::Gif>("n", 1, p);
+    auto src = std::make_unique<SpikeTimes>();
+    src->target = &pop;
+    src->receptor = pop.receptor("excitatory");
+    src->weight = 20e-9;  // a large current: it fires at once
+    src->times = {10};
+    net.add_device(std::move(src));
+    auto& rec = net.record_state(pop, {0}, {1, 2, 3, 4});
+    auto& sp = net.record_spikes(pop);
+    net.run(0.1);
+    double worst = 0;
+    std::size_t samples = 0;
+    if (!sp.spikes.empty()) {
+      const Step t0 = sp.spikes[0].time;
+      const std::array<double, 4> q{p.q_eta_1, p.q_eta_2, p.q_gamma_1, p.q_gamma_2}, tau{p.tau_eta_1, p.tau_eta_2, p.tau_gamma_1, p.tau_gamma_2};
+      for (std::size_t k = 0; k < rec.times.size(); k++) {
+        if (rec.times[k] < t0 || (sp.spikes.size() > 1 && rec.times[k] >= sp.spikes[1].time)) continue;
+        const double t = (rec.times[k] - t0) * h;
+        for (int c = 0; c < 4; c++) worst = std::max(worst, std::fabs(rec.values[0][4 * k + c] - q[c] * std::exp(-t / tau[c])) / q[c]);
+        samples++;
+      }
+    }
+    s.require("models: gif's kernels are seen over at least 4 ms after its first spike", samples >= 40, std::to_string(samples) + " samples");
+    s.check("models: gif's spike-triggered currents and threshold decay as their closed forms (relative)", sp.spikes.empty() ? 1.0 : worst, 1e-12);
+  }
+  // ---- brf: its exact flow, its conservation without damping, its selectivity ---------------------------------------
+  {
+    using M = models::Brf;
+    // With a constant input, its advance against Dormand-Prince at 1 us over 50 ms: exact while q
+    // is still, and of second order while it decays (half the step, a quarter of the error).
+    M::Params p;
+    p.theta_c = 1;  // never reached
+    const double I = 10 * u::pA;
+    auto error = [&](double step, double q0) {
+      Network net({step, 1, 1});
+      auto& pop = net.add<M>("n", 1, p);
+      pop.set(0, 0, 0.5 * u::mV);
+      pop.set(2, 0, q0);
+      auto d = std::make_unique<CurrentInput>();
+      d->target = &pop;
+      d->amplitude = I;
+      net.add_device(std::move(d));
+      const auto every = std::llround(h / step);
+      auto& rec = net.record_state(pop, {0}, {0, 1}, every);
+      net.run(0.05);
+      const auto tr = pd::simulate<M>(p, {0.5 * u::mV, 0, q0}, [&](double) { return I; }, 0.05, 1e-6, {pd::Method::dopri5, 1, {1e-15, 1e-12}}, 100, M::scale);
+      double worst = 0;
+      for (std::size_t k = 0; k < rec.times.size() && k < tr.x.size(); k++)
+        worst = std::max({worst, std::fabs(rec.values[0][2 * k] - tr.x[k][0]), std::fabs(rec.values[0][2 * k + 1] - tr.x[k][1])});
+      return worst;
+    };
+    const double still = error(h, 0), e1 = error(h, 2), e2 = error(h / 2, 2);
+    s.check("models: brf's advance with q still against Dormand-Prince at 1 us", still, 1e-15, "V");
+    s.check("models: brf's advance while q decays is of second order (error ratio at h and h / 2, less 4)", e1 / e2 - 4, 0.05);
+    s.check("models: brf's advance while q decays, at 0.1 ms, against Dormand-Prince at 1 us", e1, 1e-9, "V");
+    // Without damping its flow is a rotation: |z| is kept for 10 s (Euler's would grow).
+    M::Params r;
+    r.b_offset = 0;
+    r.Delta_b = 0;
+    r.theta_c = 1;
+    Network n2({h, 1, 1});
+    auto& p2 = n2.add<M>("n", 1, r);
+    p2.set(0, 0, 1 * u::mV);
+    n2.run(10.0);
+    const double w = 2 * std::numbers::pi * r.frequency, T = std::llround(10.0 / h) * h;
+    const double err = std::hypot(p2.get(0, 0) - 1e-3 * std::cos(w * T), p2.get(1, 0) - 1e-3 * std::sin(w * T)) / 1e-3;
+    s.check("models: brf without damping rotates z exactly for 10 s (relative)", err, 1e-10);
+    // Selectivity: a sine of 12 pA drives it to fire at its own frequency, not at a third or three times it.
+    auto count = [&](double f) {
+      Network n3({h, 1, 1});
+      auto& p3 = n3.add<M>("n", 1, M::Params{});
+      auto sine = std::make_unique<SineInput>();
+      sine->target = &p3;
+      sine->amplitude = 12 * u::pA;
+      sine->frequency = f;
+      n3.add_device(std::move(sine));
+      auto& sp = n3.record_spikes(p3);
+      n3.run(5.0);
+      return sp.spikes.size();
+    };
+    const auto at = count(10), slow = count(10.0 / 3), fast = count(30);
+    s.require("models: brf fires to a sine at its own frequency and not at a third or three times it", at > 20 && slow == 0 && fast == 0,
+              std::to_string(at) + ", " + std::to_string(slow) + " and " + std::to_string(fast) + " spikes in 5 s");
   }
   return s.done();
 }

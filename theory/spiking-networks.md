@@ -7,7 +7,8 @@ implemented-by:
   - domains/neuroscience/snn/include/neuroscience/snn/network.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/synapses.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/theory.hpp
-references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011]
+  - domains/neuroscience/snn/include/neuroscience/snn/models/excitability.hpp
+references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011, Hodgkin1948, RinzelErmentrout1998, Goebel2012, Izhikevich2007, WangBuzsaki1996, MorrisLecar1981, FitzHugh1961, Nagumo1962, Higuchi2024]
 ---
 
 # Networks of Spiking Neurons, Exactly and in Parallel
@@ -31,6 +32,8 @@ $$x(t + h) = e^{Ah} x(t) + \int_0^h e^{As}\,ds\,(B u + c). \tag{1}$$
 *Proof.* M is block upper triangular with nilpotent lower blocks; the upper blocks of Mᵏ are Aᵏhᵏ and A^{k−1}hᵏ [B, c], and summing the series gives P = Σ Aᵏhᵏ/k! = e^{Ah} and Q = Σ A^{k−1}hᵏ/k! B = ∫₀ʰ e^{As} ds B, and likewise r. ∎
 
 So (1) is applied as x ← P x + Q u + r, exact to rounding, whatever A, and without inverting A (Rotter and Diesmann 1999). Held components are rows of A, B and c set to zero, whose propagator holds them fixed: the refractory propagator of a model is computed once beside its free one.
+
+*Remark (an oscillator whose damping varies).* The balanced resonate-and-fire neuron (Higuchi et al. 2024) is not linear: its damping b = −b′ − Δ_b q depends on its refractoriness q, which over a step decays as q₀e^{−t/τ_q}. Its complex state obeys the scalar equation z′ = (b(t) + iω) z + u/C, whose free solution is z₀ exp(∫₀ʰ (b + iω) dt) exactly, since scalars commute; the input term is integrated with the step's mean of b, so the step is exact while q is still and of second order in h while it decays. Under Euler's step z ← z + h(b + iω) z the amplification |1 + h(b + iω)| exceeds 1 unless b < p(ω) = (−1 + √(1 − h²ω²))/h, the divergence boundary that Higuchi et al. build into b; the exact flow is stable for every b ≤ 0, and p(ω) → 0 as h → 0.
 
 *Remark (scales).* In SI units a potential near 10⁻² V is driven by a current near 10⁻¹⁰ A through 10⁸ Ω, so M has entries of 10⁵ beside entries of 10⁻². Its norm forces some seventeen squarings in the exponential, which cost the small entries their accuracy (a relative error of 10⁻¹¹ is observed). The propagator is computed in dimensionless form, D⁻¹ M D with D the components' typical sizes rounded to powers of two (an exact scaling), and scaled back; the error falls to 6 × 10⁻¹⁵.
 
@@ -80,10 +83,38 @@ with e^{u²}(1 + erf u) = erfcx(−u), integrated by adaptive Gauss–Kronrod. O
 
 $$\tau \dot r = \frac{\Delta}{\pi\tau} + 2rv, \qquad \tau\dot v = v^2 + \bar\eta + J\tau r - (\pi\tau r)^2. \tag{3}$$
 
-## 7. What the Checks Show
+## 7. Classes of Excitability
+
+Hodgkin (1948) found two kinds of axon under steady currents: in class 1 the repetitive firing begins at an arbitrarily low rate, which grows continuously with the current; in class 2 it begins at a rate bounded away from zero. Rinzel and Ermentrout (1998) traced the difference to the bifurcation in which the resting state is lost as the current I grows.
+
+**Definition 2 (steady-state current).** For a model whose gates x_j relax to x_{j,∞}(V), the steady-state current is I_ss(V) = I_ion(V, x_∞(V)); the equilibria under a constant current I are the solutions of I_ss(V) = I, and the resting state is the lowest.
+
+**Proposition 5 (class 1).** Suppose the resting state meets a saddle where I_ss has its first local maximum I_SN (a saddle-node bifurcation), and the unstable manifold of the saddle closes into an invariant circle (SNIC). Near the fold the flow on the centre manifold is u′ = α(I − I_SN) + βu² + O(u³, (I − I_SN)u), with αβ > 0, and for small I − I_SN > 0 the neuron fires with period
+
+$$T = \frac{\pi}{\sqrt{\alpha\beta\,(I - I_{SN})}} + O(1). \tag{4}$$
+
+*Proof.* The time spent near the fold is ∫ du / (αΔI + βu²) over a neighbourhood of u = 0, which tends to the integral over ℝ, π/√(αβΔI), as ΔI → 0; the rest of the circle is passed in a time bounded independently of ΔI. ∎
+
+So four times the excess current halves the period. For Izhikevich's quadratic model (2007), C V′ = k(V − V_r)(V − V_t) − U + I with U′ = a(b(V − V_r) − U), the equilibria have U = b(V − V_r), so I_ss(V) = −k(V − V_r)(V − V_t − b/k), a parabola whose maximum is the rheobase
+
+$$I_{SN} = \frac{(k(V_t - V_r) + b)^2}{4k}, \tag{5}$$
+
+51.4 pA for the regular-spiking neuron. For Wang and Buzsáki's interneuron (1996) and for Morris and Lecar's fibre (1981) with Rinzel and Ermentrout's SNIC parameters, I_SN is found by scanning I_ss.
+
+**Class 2.** For a planar model (V, w) the resting state, a stable focus, loses its stability where the trace of the Jacobian along the branch of equilibria vanishes while its determinant is positive: a pair of eigenvalues crosses the imaginary axis (a Hopf bifurcation, at I_H). The oscillation it gives begins at a finite frequency; if the bifurcation is subcritical, as with Morris and Lecar's Hopf parameters, the neuron jumps to a large cycle which coexists with the resting state somewhat below I_H. For FitzHugh and Nagumo's model, v′ = v − v³/3 − w + I, w′ = ε(v + a − bw), the Jacobian at an equilibrium (v*, w*) is [[1 − v*², −1], [ε, −εb]], with trace 1 − v*² − εb and determinant ε(1 − b(1 − v*²)), so
+
+$$v^* = -\sqrt{1 - \varepsilon b}, \qquad I_H = \frac{v^* + a}{b} - v^* + \frac{v^{*3}}{3}, \tag{6}$$
+
+0.33128 for a = 0.7, b = 0.8, ε = 0.08.
+
+*Remark (counting broad spikes).* A spike of a conductance model is the upward crossing of V_spike. A guard {V ≥ V_spike} tested on the grid would count every step of a broad spike, so the guard is given hysteresis by a discrete component, armed ∈ {0, 1}: G = {V ≥ V_spike, armed = 1}, the jump sets armed = 0, and a silent jump, one that emits no event, sets armed = 1 whenever V < V_rearm. This is a hybrid system with two jump sets (Goebel, Sanfelice and Teel 2012), only one of them observed; physis's simulation and the network apply the silent jump at the same point of the step, so that they still agree.
+
+## 8. What the Checks Show
 
 - Exactness: postsynaptic potentials and currents against closed forms to 10⁻¹² of their peaks; a population and physis's simulation of one neuron fire at the same steps.
 - Firing patterns of the adaptive exponential model (Brette and Gerstner 2005) as Naud et al. (2008) list them, and of Izhikevich's model (2003); the Hodgkin–Huxley neuron (1952) at rest at −65.000 mV and firing at 69 Hz under 10 µA/cm² with two integrators.
 - Determinism across 1, 4 and 7 threads (Proposition 3).
 - Plasticity against its defining sums, to the precision of the stored weights.
+- Classes of excitability: Izhikevich's 2007 model, Wang and Buzsáki's interneuron and Morris and Lecar's SNIC set are silent 0.2 % below I_SN, from (5) or from a scan of I_ss, fire 0.2 % above it, and halve their period when the excess current is multiplied by four, as (4) predicts, to within 10 %; Morris and Lecar's Hopf set and FitzHugh and Nagumo's model return from a small kick 1 % below I_H, from the Jacobian or from (6), are driven into firing 1 % above it, and begin at a rate bounded away from zero.
+- The adaptive LIF's resonant free response against the exponential of its system to 4 × 10⁻¹³; the GIF neuron without kernels firing spike for spike as the escape-noise LIF under the same seed, and its kernels against their closed forms; the BRF neuron exact while its refractoriness is still, of second order while it decays, rotating without loss for 10 s when undamped, and selective for its own frequency.
 - Neurons in white noise at 2.7 % below (2), as the grid predicts; Brunel's network (g = 5, η = 2, C_E = 500) at 55.1 Hz against its self-consistent 54.9 Hz; quadratic neurons at 126 Hz against the 128 Hz of (3).

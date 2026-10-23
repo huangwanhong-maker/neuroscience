@@ -152,4 +152,13 @@ export const CITATIONS = {
   Izhikevich2003: 'Izhikevich, E. M. (2003), Simple model of spiking neurons, IEEE Trans. Neural Netw. 14, 1569-1572.',
   HodgkinHuxley1952: 'Hodgkin, A. L. and Huxley, A. F. (1952), A quantitative description of membrane current and its application to conduction and excitation in nerve, J. Physiol. 117, 500-544.',
   Salmon2011: 'Salmon, J. K., Moraes, M. A., Dror, R. O. and Shaw, D. E. (2011), Parallel random numbers: as easy as 1, 2, 3, Proc. SC11, 1-12.',
+  Hodgkin1948: 'Hodgkin, A. L. (1948), The local electric changes associated with repetitive action in a non-medullated axon, J. Physiol. 107, 165-181.',
+  RinzelErmentrout1998: 'Rinzel, J. and Ermentrout, G. B. (1998), Analysis of neural excitability and oscillations, in Koch, C. and Segev, I. (eds.), Methods in Neuronal Modeling, 2nd ed., MIT Press, 251-292.',
+  Goebel2012: 'Goebel, R., Sanfelice, R. G. and Teel, A. R. (2012), Hybrid Dynamical Systems: Modeling, Stability, and Robustness, Princeton University Press.',
+  Izhikevich2007: 'Izhikevich, E. M. (2007), Dynamical Systems in Neuroscience: The Geometry of Excitability and Bursting, MIT Press.',
+  WangBuzsaki1996: 'Wang, X.-J. and Buzsáki, G. (1996), Gamma oscillation by synaptic inhibition in a hippocampal interneuronal network model, J. Neurosci. 16, 6402-6413.',
+  MorrisLecar1981: 'Morris, C. and Lecar, H. (1981), Voltage oscillations in the barnacle giant muscle fiber, Biophys. J. 35, 193-213.',
+  FitzHugh1961: 'FitzHugh, R. (1961), Impulses and physiological states in theoretical models of nerve membrane, Biophys. J. 1, 445-466.',
+  Nagumo1962: 'Nagumo, J., Arimoto, S. and Yoshizawa, S. (1962), An active pulse transmission line simulating nerve axon, Proc. IRE 50, 2061-2070.',
+  Higuchi2024: 'Higuchi, S., Kairat, S., Bohte, S. M. and Otte, S. (2024), Balanced resonate-and-fire neurons, Proc. 41st ICML, PMLR 235, 18305-18323.',
 };

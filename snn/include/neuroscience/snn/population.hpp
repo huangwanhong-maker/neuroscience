@@ -9,7 +9,8 @@
 //      devices put in for the step (exactly for a linear model, by the model's own flow if
 //      it has one, else by its integrator), with its held components still if it dwells;
 //   2. receives the spikes arriving at t_{k+1}, each jumping its receptor's component by its
-//      weight, except a held component, which discards them (NEST's convention);
+//      weight, except a held component, which discards them (NEST's convention), and
+//      settles (a model that counts upward crossings re-arms its guard);
 //   3. if it is not dwelling and its state lies in the guard (or, for an escape-noise model,
 //      with probability 1 - exp(-rho h)), fires at t_{k+1}: it jumps and dwells for t_ref.
 // This is physis::dynamics::simulate's order, with the arrivals of step 2 added; a neuron of
@@ -212,6 +213,7 @@ class PopulationOf final : public Population {
         if (hold && M::held[M::receptors[q].component]) continue;
         receive<M>(p, s, q, w);
       }
+      if constexpr (Settling<M>) M::settle(p, s);
       // 3. the event
       if (hold) {
         dwell_[i]--;

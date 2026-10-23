@@ -5,6 +5,8 @@
 // - adex:           the adaptive exponential integrate-and-fire neuron (Brette and Gerstner
 //                   2005), with exponentially decaying synaptic currents.
 // - izhikevich:     Izhikevich's simple model (2003), in SI units.
+// - izhikevich_2007: the same model in physical units, with a capacitance and a recovery
+//                  current, as Izhikevich's book (2007) fits it to cortical cells.
 // - hodgkin_huxley: the squid axon (Hodgkin and Huxley 1952) as NEST's hh_psc_alpha states
 //                   it for a patch of 100 pF, with exponentially decaying synaptic currents.
 // - qif:            the quadratic integrate-and-fire neuron in normalised units,
@@ -12,6 +14,9 @@
 //                   1986; Montbrió, Pazó and Roxin 2015).
 // - resonate_and_fire: a damped linear oscillator that fires when its second coordinate
 //                   crosses a threshold (Izhikevich 2001), as neuromorphic hardware uses it.
+// - brf:            the balanced resonate-and-fire neuron (Higuchi et al. 2024): the same
+//                   oscillator without a reset, its refractoriness raising the threshold and
+//                   deepening the damping; advanced by its exact flow.
 //
 // Rates written in the literature per millisecond are converted to per second.
 
@@ -20,6 +25,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <complex>
 #include <limits>
 #include <numbers>
 
@@ -168,6 +174,61 @@ struct Izhikevich {
   static void jump(const Params& p, State<n>& x) { x[0] = p.c; x[1] += p.d; }
   static double dwell(const Params&) { return 0; }
   static State<n> initial(const Params& p) { return {p.c, p.b * p.c}; }
+};
+
+// ---- izhikevich_2007 ----------------------------------------------------------------------------------
+// The simple model in physical units (Izhikevich 2007, ch. 8):
+//   C V' = k (V - V_r)(V - V_t) - U + I,   U' = a (b (V - V_r) - U);   at V >= V_peak: V <- c, U <- U + d.
+// The defaults are the book's regular-spiking pyramidal neuron: C = 100 pF, k = 0.7 pA/mV^2,
+// V_r = -60 mV, V_t = -40 mV, V_peak = 35 mV, a = 0.03/ms, b = -2 nS, c = -50 mV, d = 100 pA.
+// The equilibria satisfy (V - V_r)(k (V - V_t) - b) = -I, so the resting state meets the saddle
+// and disappears at the rheobase I = (k (V_t - V_r) + b)^2 / (4 k), 51.4 pA for the defaults.
+// Every term is evaluated at min(V, V_peak), as for adex.
+struct Izhikevich2007 {
+  static constexpr std::string_view name = "izhikevich_2007";
+  static constexpr std::string_view summary = "Izhikevich's simple model in physical units: a quadratic membrane with its capacitance and a recovery current; the defaults are the book's regular-spiking neuron.";
+  static constexpr std::string_view citation = "Izhikevich 2007, Dynamical Systems in Neuroscience, MIT Press, ch. 8";
+  static constexpr std::size_t n = 4;
+  struct Params {
+    double C_m = 100 * unit::pF, k = 0.7e-6, V_r = -60 * unit::mV, V_t = -40 * unit::mV, V_peak = 35 * unit::mV;
+    double a = 30.0, b = -2 * unit::nS, c = -50 * unit::mV, d = 100 * unit::pA;
+    double tau_syn_ex = 2 * unit::ms, tau_syn_in = 2 * unit::ms, I_e = 0;
+  };
+  static constexpr std::array<Parameter<Params>, 12> parameters{{
+      {"C_m", &Params::C_m, dim::capacitance, "membrane capacitance"},
+      {"k", &Params::k, dim::conductance / dim::voltage, "gain of the quadratic membrane (0.7 pA/mV^2)"},
+      {"V_r", &Params::V_r, dim::voltage, "resting potential"},
+      {"V_t", &Params::V_t, dim::voltage, "instantaneous threshold potential"},
+      {"V_peak", &Params::V_peak, dim::voltage, "the potential at which the spike is cut"},
+      {"a", &Params::a, dim::frequency, "rate of recovery (0.03/ms)"},
+      {"b", &Params::b, dim::conductance, "sensitivity of the recovery to the potential (negative: amplifying)"},
+      {"c", &Params::c, dim::voltage, "reset potential"},
+      {"d", &Params::d, dim::current, "jump of the recovery current at a spike"},
+      {"tau_syn_ex", &Params::tau_syn_ex, dim::time, "decay time of the excitatory current"},
+      {"tau_syn_in", &Params::tau_syn_in, dim::time, "decay time of the inhibitory current"},
+      {"I_e", &Params::I_e, dim::current, "constant external current"},
+  }};
+  static constexpr std::array<Component, n> components{{
+      {"V", dim::voltage, "membrane potential"}, {"U", dim::current, "recovery current"},
+      {"I_ex", dim::current, "excitatory synaptic current"}, {"I_in", dim::current, "inhibitory synaptic current"}}};
+  static constexpr std::array<double, n> scale{1e-3, 1e-10, 1e-10, 1e-10};
+  static constexpr Dimension input = dim::current;
+  static constexpr double input_scale = 1e-10;
+  static constexpr std::array<Receptor, 2> receptors{{
+      {"excitatory", 2, "a jump of the excitatory current (A, positive)"}, {"inhibitory", 3, "a jump of the inhibitory current (A, negative)"}}};
+  static constexpr std::array<bool, n> held{false, false, false, false};
+  static constexpr Method method = Method::dopri5;
+  static void derivative(const Params& p, const State<n>& x, double u, State<n>& dx) {
+    const double V = std::min(x[0], p.V_peak);
+    dx[0] = (p.k * (V - p.V_r) * (V - p.V_t) - x[1] + x[2] + x[3] + p.I_e + u) / p.C_m;
+    dx[1] = p.a * (p.b * (V - p.V_r) - x[1]);
+    dx[2] = -x[2] / p.tau_syn_ex;
+    dx[3] = -x[3] / p.tau_syn_in;
+  }
+  static bool guard(const Params& p, const State<n>& x) { return x[0] >= p.V_peak; }
+  static void jump(const Params& p, State<n>& x) { x[0] = p.c; x[1] += p.d; }
+  static double dwell(const Params&) { return 0; }
+  static State<n> initial(const Params& p) { return {p.V_r, 0, 0, 0}; }
 };
 
 // ---- hodgkin_huxley -----------------------------------------------------------------------------------
@@ -352,6 +413,83 @@ struct ResonateAndFire {
   static void jump(const Params&, State<n>& x) { x = {0, 0}; }
   static double dwell(const Params& p) { return p.t_ref; }
   static State<n> initial(const Params&) { return {0, 0}; }
+};
+
+// ---- brf --------------------------------------------------------------------------------------------
+// The balanced resonate-and-fire neuron (Higuchi, Kairat, Bohte and Otte 2024): the oscillator
+// z' = (b + i omega) z + I / C on z = x + i y, firing when x reaches the threshold
+// theta_c + Delta_theta q, and not reset. Its refractoriness is q, which jumps by 1 at each
+// spike and decays with tau_q, and which both raises the threshold and deepens the damping,
+// b = -b_offset - Delta_b q: a spike is followed by a few more at the crest of the
+// oscillation, until the threshold outruns it, and the oscillation is damped as it fires.
+//
+// The paper steps the oscillator by Euler's method, z <- z + h ((b + i omega) z + I), whose
+// amplification |1 + h (b + i omega)| exceeds 1 unless b lies below the divergence boundary
+// p(omega) = (-1 + sqrt(1 - (h omega)^2)) / h; it therefore sets b = p(omega) - b' - q. Here
+// the oscillator is advanced by its exact flow, stable for every b <= 0, and p(omega) -> 0 as
+// h -> 0 leaves b = -b' - q, the continuous model the paper's step approximates. Over a step
+// q(t) = q_0 e^{-t / tau_q} is known, so the free part of z is multiplied by
+// exp(int (b + i omega) dt), exactly; the input, held over the step, is integrated with the
+// step's mean of b, which is exact while q is still and of second order in h while it decays
+// (at 0.1 ms, an error of about 1e-11 V per step after a spike).
+//
+// With the paper's time unit T (its step is 0.01 T and gamma = 0.9 per step), Delta_theta =
+// theta_c, Delta_b = 1 / T and tau_q = -0.01 T / ln 0.9 = 0.095 T; the defaults take
+// T = 100 ms for an oscillator of 10 Hz, with b_offset in the paper's range (2 to 3) / T.
+struct Brf {
+  static constexpr std::string_view name = "brf";
+  static constexpr std::string_view summary = "Balanced resonate-and-fire neuron: a damped oscillator that fires without a reset, its refractoriness raising the threshold and deepening the damping; advanced by its exact flow.";
+  static constexpr std::string_view citation =
+      "Higuchi, Kairat, Bohte and Otte 2024, Proc. 41st ICML, PMLR 235, 18305-18323 (arXiv:2402.14603); Izhikevich 2001, Neural Netw. 14, 883-894";
+  static constexpr std::size_t n = 3;
+  struct Params {
+    double C_m = 250 * unit::pF, frequency = 10 * unit::Hz, b_offset = 25.0, Delta_b = 10.0, tau_q = 9.5 * unit::ms;
+    double theta_c = 1 * unit::mV, Delta_theta = 1 * unit::mV, I_e = 0;
+  };
+  static constexpr std::array<Parameter<Params>, 8> parameters{{
+      {"C_m", &Params::C_m, dim::capacitance, "the capacitance that turns a current into the oscillator's drive"},
+      {"frequency", &Params::frequency, dim::frequency, "frequency of the oscillation"},
+      {"b_offset", &Params::b_offset, dim::frequency, "damping at rest (b' in the paper)"},
+      {"Delta_b", &Params::Delta_b, dim::frequency, "damping added per unit of refractoriness"},
+      {"tau_q", &Params::tau_q, dim::time, "decay time of the refractoriness"},
+      {"theta_c", &Params::theta_c, dim::voltage, "threshold at rest"},
+      {"Delta_theta", &Params::Delta_theta, dim::voltage, "threshold added per unit of refractoriness"},
+      {"I_e", &Params::I_e, dim::current, "constant external current"},
+  }};
+  static constexpr std::array<Component, n> components{{
+      {"x", dim::voltage, "real part, compared with the threshold"}, {"y", dim::voltage, "imaginary part"},
+      {"q", dim::one, "refractoriness: 1 more at each spike, decaying with tau_q"}}};
+  static constexpr std::array<double, n> scale{1e-3, 1e-3, 1.0};
+  static constexpr Dimension input = dim::current;
+  static constexpr double input_scale = 1e-10;
+  static constexpr std::array<Receptor, 1> receptors{{{"delta", 0, "a jump of the real part (V)"}}};
+  static constexpr std::array<bool, n> held{false, false, false};
+  static constexpr Method method = Method::exact;
+  static void derivative(const Params& p, const State<n>& x, double u, State<n>& dx) {
+    const double b = -p.b_offset - p.Delta_b * x[2], w = 2 * std::numbers::pi * p.frequency;
+    dx[0] = b * x[0] - w * x[1] + (p.I_e + u) / p.C_m;
+    dx[1] = w * x[0] + b * x[1];
+    dx[2] = -x[2] / p.tau_q;
+  }
+  static void advance(const Params& p, State<n>& x, double u, double h, const std::array<bool, n>&) {
+    const double w = 2 * std::numbers::pi * p.frequency, r = h / p.tau_q;
+    const double q_mean = r > 0 ? x[2] * -std::expm1(-r) / r : x[2];  // the mean of q over the step
+    const double b = -p.b_offset - p.Delta_b * q_mean, a = b * h, th = w * h;
+    const std::complex<double> lambda(b, w), z(x[0], x[1]);
+    const std::complex<double> E(std::exp(a) * std::cos(th), std::exp(a) * std::sin(th));
+    // (e^{lambda h} - 1) / lambda, without cancellation where lambda h is small.
+    const double s = std::sin(th / 2);
+    const std::complex<double> E1(std::expm1(a) * std::cos(th) - 2 * s * s, std::exp(a) * std::sin(th));
+    const std::complex<double> phi = std::abs(lambda) * h < 1e-12 ? std::complex<double>(h, 0) : E1 / lambda;
+    const std::complex<double> next = E * z + phi * ((p.I_e + u) / p.C_m);
+    x[0] = next.real();
+    x[1] = next.imag();
+    x[2] *= std::exp(-r);
+  }
+  static bool guard(const Params& p, const State<n>& x) { return x[0] >= p.theta_c + p.Delta_theta * x[2]; }
+  static void jump(const Params&, State<n>& x) { x[2] += 1; }
+  static double dwell(const Params&) { return 0; }
+  static State<n> initial(const Params&) { return {0, 0, 0}; }
 };
 
 }  // namespace neuroscience::snn::models

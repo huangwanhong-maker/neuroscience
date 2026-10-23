@@ -17,7 +17,8 @@
 //
 // A model may also define receive() to change how a spike acts (an alpha synapse scales
 // it), advance() to integrate its own flow exactly where it can (the quadratic
-// integrate-and-fire neuron), and hazard() to fire by escape noise instead of a guard.
+// integrate-and-fire neuron), hazard() to fire by escape noise instead of a guard, and
+// settle() to re-arm a guard that counts upward crossings.
 
 #pragma once
 
@@ -90,6 +91,11 @@ template <class M>
 concept Escaping = requires(const typename M::Params& p, const State<M::n>& x) {
   { M::hazard(p, x) } -> std::convertible_to<double>;
 };
+
+// A model whose spike is an upward crossing re-arms its guard by a silent jump, settle()
+// (physis/dynamics), called after the flow and the arrivals and before the guard is tested:
+// a broad spike is counted once, and the next only after the potential has fallen back.
+using pd::Settling;
 
 // x / (1 - exp(-x)), continuous at 0 (where it is 1 + x/2 + x^2/12): the form of the
 // Hodgkin-Huxley rate functions, whose removable singularity must not divide by zero.

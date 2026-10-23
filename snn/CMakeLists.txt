@@ -16,6 +16,7 @@ target_link_libraries(snn_benchmark PRIVATE neuroscience::snn)
 
 if(NEUROSCIENCE_CHECKS)
   calx_add_check(check_snn_models SOURCES tests/check_models.cpp LIBRARIES neuroscience::snn)
+  calx_add_check(check_snn_excitability SOURCES tests/check_excitability.cpp LIBRARIES neuroscience::snn)
   calx_add_check(check_snn_network SOURCES tests/check_network.cpp LIBRARIES neuroscience::snn)
   calx_add_check(check_snn_plasticity SOURCES tests/check_plasticity.cpp LIBRARIES neuroscience::snn)
   calx_add_check(check_snn_theory SOURCES tests/check_theory.cpp LIBRARIES neuroscience::snn)
