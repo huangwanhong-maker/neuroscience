@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "analysis.hpp"
 #include "json.hpp"
 #include "model.hpp"
 #include "models.hpp"

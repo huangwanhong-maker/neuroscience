@@ -81,17 +81,20 @@ The results give times in seconds and quantities in SI units, each recorded comp
 
 ## 5. Checks and Performance
 
-Seven check programs on calx `verification`, built and run by the domain's suite (`node domains/neuroscience/tests/run-tests.mjs`) through CMake, here or in WSL:
+Eight check programs on calx `verification`, built and run by the domain's suite (`node domains/neuroscience/tests/run-tests.mjs`) through CMake, here or in WSL:
 
 - **models** (32): postsynaptic potentials and currents against closed forms (to 1e-12 of their peak); periods on the grid against first passage; a population against physis's simulation of one neuron, spike for spike; the firing patterns of Naud et al. 2008 (tonic, adapting, initial burst, regular bursting) and Izhikevich 2003 (regular, fast, chattering); Hodgkin and Huxley at rest at −65.000 mV and firing at 69 Hz under two integrators; the QIF period against its closed form; resonate-and-fire, GLIF and escape noise against theirs; the adaptive LIF's resonant free response against the exponential of its system; GIF spike for spike as `lif_escape` without its kernels, and its kernels against their closed forms; BRF exact while its refractoriness is still and of second order while it decays, undamped without loss for 10 s, and selective for its frequency.
 - **excitability** (15): the classes of excitability (Hodgkin 1948; Rinzel and Ermentrout 1998). Class 1, for `izhikevich_2007`, `wang_buzsaki` and `morris_lecar` with the SNIC parameters: silent 0.2 % below the saddle-node of the steady-state current, firing 0.2 % above it, and the period halved by four times the excess current. Class 2, for `morris_lecar` with the Hopf parameters and `fitzhugh_nagumo`: a kicked resting state returns 1 % below the Hopf current computed from the model's Jacobian (and from the closed form for FitzHugh–Nagumo) and fires 1 % above it, at a rate bounded away from zero; each broad spike counted once; population and physis spike for spike.
 - **quantum** (8): the first photons of 20,000 emitters against the closed-form waiting time (Kolmogorov–Smirnov), exact on the grid; the grid's mean interval against the master equation's rate (Proposition 6 of the theory); the stationary rate; the average of 20,000 trajectories against the master equation; pulses of π and 2π.
+- **analysis** (18): the statistics of activity against independent Poisson trains (CV, LV and Fano factors of 1, χ√N = 1, no correlation), clocks (all 0), one shared train (χ and correlation 1) and a population oscillating at 40 Hz (its spectrum's peak); the profile's phases accounting for the run.
 - **network** (11): delays; connection rules; Poisson input; uniform projections against explicit ones; the same spikes on 1, 4 and 7 threads.
 - **plasticity** (8): pair and triplet STDP against their sums over pairs and triplets of spikes (to float precision); short-term plasticity at its steady states; the pruning of the history.
 - **theory** (8): Siegert's rate against neurons in white noise (2.7 % below, as a discrete grid makes it); Brunel's network against its self-consistent rate (55.1 Hz against 54.9 Hz); QIF neurons against the exact mean field of Montbrió, Pazó and Roxin (126 Hz against 128 Hz).
 - **spec** (12): JSON against C++, spike for spike; refusals of wrong dimensions, models and parameters.
 
-`snn_benchmark [scale] [seconds] [threads ...]` runs Brunel's network (12,500 neurons, 15.6 million synapses, 590 million synaptic events per simulated second at 37.7 Hz). On the development machine (i7-11370H, 4 cores, 8 threads, WSL): 8.8 s for a second of activity on one thread (6.7e7 events/s), 2.9 s on four, 2.6 s on eight (2.2e8 events/s).
+`snn_benchmark [scale] [seconds] [threads ...]` runs Brunel's network (12,500 neurons, 15.6 million synapses, 590 million synaptic events per simulated second at 38 Hz). On the development machine (i7-11370H, 4 cores, 8 threads, WSL): 6.35 s for a second of activity on one thread (9.4e7 events/s), 2.23 s on four, 1.74 s on eight (3.4e8 events/s). The engine's profile (below) found the Poisson input to take most of the time, and it now draws by inverting a table of the distribution; before, the same run took 8.8 s, 2.9 s and 2.6 s.
+
+**What a run reports.** Beside its spikes, rates, states and weights, a run describes each spike recorder's activity (`analysis.hpp`): each neuron's rate; the irregularity of its intervals (CV, and the local variation LV); the Fano factor of counts; Golomb's synchrony χ and the correlation of counts; the population's rate and its spectrum by Welch's method; histograms of intervals and rates. A specification sets the window and the bins under `"analysis"`. It reports the engine's profile too: the time spent updating the neurons, exchanging and delivering spikes and recording, and each thread's share, so that waiting shows.
 
 ## 6. Dependencies
 
@@ -110,6 +113,7 @@ calx (`random`, `linalg`, `integrators`, `special_functions`, `quadrature`, `sol
 
 1. **Models from the survey of recent work** still to be written (multi-compartment and dendritic neurons, neural masses, the Loihi neurons, the Poisson GLM; learning rules such as e-prop, three-factor and burst-dependent plasticity), and more quantum neurons: open quantum Hopfield networks (Rotondo et al. 2018), whose jump rates depend on the other spins, and Ising-like networks.
 2. **Precise spike times** between grid points (Hanuschkin et al. 2010) for models where they matter.
-3. **Compilation to devices**, planned and not built: networks lowered through calx's IR to GPUs, neuromorphic chips (Loihi 2, SpiNNaker 2, BrainScaleS-2) and quantum processors, with this simulator as the reference every device is checked against ([idea](../development/ideas/2026-10-23-spiking-networks-on-devices.md)).
-4. **Python bindings** (nanobind), beside the command line.
-5. **Distributed simulation** across processes, by the same windows of the shortest delay.
+3. **A faster draw of random numbers**, now that the profile shows one Philox block per neuron and step to be the update's largest cost: blocks drawn for many neurons at once, in vector registers.
+4. **Compilation to devices**, planned and not built: networks lowered through calx's IR to GPUs, neuromorphic chips (Loihi 2, SpiNNaker 2, BrainScaleS-2) and quantum processors, with this simulator as the reference every device is checked against ([idea](../development/ideas/2026-10-23-spiking-networks-on-devices.md)).
+5. **Python bindings** (nanobind), beside the command line and the [Spiking Simulator](https://github.com/huangwanhong-maker/The-Science-Infrastructures/tree/main/applications/spiking-simulator).
+6. **Distributed simulation** across processes, by the same windows of the shortest delay.

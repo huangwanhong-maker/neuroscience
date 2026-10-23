@@ -8,6 +8,9 @@
 // quantity drawn for each synapse or neuron is a distribution:
 //   {"uniform": ["0 mV", "20 mV"]}, {"normal": ["0.1 mV", "0.01 mV"], "min": "0 mV"},
 //   {"lognormal": ["0.1 mV", 0.5]}  (a median and the sigma of the logarithm).
+// The results describe each spike recorder's activity (analysis.hpp), in a window and with bins
+// a specification may set: "analysis": {"from": "100 ms", "bin": "1 ms", "window": "100 ms",
+// "sync_bin": "5 ms"}; and they give the engine's profile, where its time went.
 // The schema, with an example, is in the module's README.
 
 #pragma once
@@ -19,6 +22,7 @@
 #include <string_view>
 #include <vector>
 
+#include "analysis.hpp"
 #include "json.hpp"
 #include "models.hpp"
 #include "network.hpp"
@@ -79,6 +83,7 @@ struct Built {
   std::vector<WeightRecorder*> weights;
   struct Rate { SpikeRecorder* recorder; double bin; };
   std::vector<Rate> rates;
+  analysis::Options analysis;  // start: the beginning of the window described; stop: the run's end
 };
 
 inline Built build(const Json& j) {
@@ -99,6 +104,14 @@ inline Built build(const Json& j) {
     else throw std::invalid_argument("integrator: default, euler, heun, rk4, dopri5 or rush_larsen");
   }
   out.duration = j.has("duration") ? quantity(j.at("duration"), dim::time, "duration") : 0;
+  if (const Json* a = j.find("analysis")) {
+    if (const Json* v = a->find("from")) out.analysis.start = quantity(*v, dim::time, "analysis from");
+    if (const Json* v = a->find("bin")) out.analysis.bin = quantity(*v, dim::time, "analysis bin");
+    if (const Json* v = a->find("window")) out.analysis.window = quantity(*v, dim::time, "analysis window");
+    if (const Json* v = a->find("sync_bin")) out.analysis.sync_bin = quantity(*v, dim::time, "analysis sync_bin");
+    if (const Json* v = a->find("pairs")) out.analysis.pairs = static_cast<std::size_t>(v->as_number());
+    if (!(out.analysis.bin > 0 && out.analysis.window > 0 && out.analysis.sync_bin > 0)) throw std::invalid_argument("analysis: its bins and window must be positive");
+  }
   out.network = std::make_unique<Network>(st);
   Network& net = *out.network;
 
@@ -295,6 +308,20 @@ inline Json results(const Built& b) {
   stats.set("run_seconds", st.wall);
   stats.set("realtime_factor", net.time() > 0 ? st.wall / net.time() : 0.0);
   stats.set("min_delay_steps", static_cast<double>(net.min_delay()));
+  Json prof = Json::object(), threads = Json::array();
+  prof.set("windows", static_cast<double>(st.profile.windows));
+  prof.set("update", st.profile.update);
+  prof.set("exchange", st.profile.exchange);
+  prof.set("deliver", st.profile.deliver);
+  prof.set("record", st.profile.record);
+  for (std::size_t t = 0; t < st.profile.update_busy.size(); t++) {
+    Json x = Json::object();
+    x.set("update", st.profile.update_busy[t]);
+    x.set("deliver", st.profile.deliver_busy[t]);
+    threads.push(x);
+  }
+  prof.set("threads", threads);
+  stats.set("profile", prof);
   out.set("statistics", stats);
   Json pops = Json::array();
   for (const auto& p : net.populations()) {
@@ -369,6 +396,65 @@ inline Json results(const Built& b) {
     weights.push(q);
   }
   out.set("weights", weights);
+  // What each spike recorder's activity was.
+  Json described = Json::array();
+  auto numbers = [](const std::vector<double>& v) { Json a = Json::array(); for (double x : v) a.push(x); return a; };
+  auto histogram = [&](const analysis::Histogram& hg) {
+    Json q = Json::object(), c = Json::array();
+    for (auto x : hg.counts) c.push(static_cast<double>(x));
+    q.set("edges", numbers(hg.edges));
+    q.set("counts", c);
+    return q;
+  };
+  auto finite = [](double x) { return std::isfinite(x) ? Json(x) : Json(); };
+  for (const SpikeRecorder* r : b.spikes) {
+    analysis::Spikes sp;
+    sp.neurons = r->count;
+    const Gid lo = r->population->first + static_cast<Gid>(r->first);
+    for (const Spike& s : r->spikes) { sp.times.push_back(s.time * h); sp.senders.push_back(s.gid - lo); }
+    analysis::Options o = b.analysis;
+    o.stop = net.time();
+    if (o.start >= o.stop) o.start = 0;
+    const analysis::Description d = analysis::describe(sp, o);
+    Json q = Json::object();
+    q.set("population", r->population->name);
+    q.set("first", r->first);
+    q.set("count", r->count);
+    q.set("from", d.start);
+    q.set("to", d.stop);
+    q.set("spikes", d.spikes);
+    q.set("active", d.active);
+    q.set("rate_mean", finite(d.rate_mean));
+    q.set("rate_sd", finite(d.rate_sd));
+    q.set("cv", finite(d.cv));
+    q.set("lv", finite(d.lv));
+    q.set("irregular_neurons", d.irregular);
+    q.set("fano", finite(d.fano));
+    q.set("chi", finite(d.chi));
+    q.set("correlation", finite(d.correlation));
+    q.set("pairs", d.pairs);
+    q.set("peak_frequency", finite(d.peak_frequency));
+    q.set("rates", numbers(d.rates));
+    q.set("rate_histogram", histogram(d.rate_histogram));
+    q.set("isi", histogram(d.isi));
+    Json pop = Json::object();
+    pop.set("bin", o.bin);
+    pop.set("times", numbers(d.rate_times));
+    pop.set("rate", numbers(d.rate));
+    q.set("population_rate", pop);
+    Json spec = Json::object();
+    spec.set("frequency", numbers(d.spectrum.frequency));
+    spec.set("density", numbers(d.spectrum.density));
+    spec.set("segments", d.spectrum.segments);
+    q.set("spectrum", spec);
+    Json opts = Json::object();
+    opts.set("bin", o.bin);
+    opts.set("window", o.window);
+    opts.set("sync_bin", o.sync_bin);
+    q.set("options", opts);
+    described.push(q);
+  }
+  out.set("analysis", described);
   return out;
 }
 

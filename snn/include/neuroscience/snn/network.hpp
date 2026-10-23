@@ -32,6 +32,7 @@
 #include <vector>
 
 #include <calx/linalg/sparse.hpp>
+#include <calx/random/poisson.hpp>
 #include <calx/random/stream.hpp>
 #include <calx/scheduler/thread_pool.hpp>
 
@@ -130,6 +131,8 @@ class Device {
   Population* target = nullptr;
   std::size_t first = 0, count = 0;  // the target's neurons [first, first + count)
   double start = 0, stop = std::numeric_limits<double>::infinity();
+  // Readies the device for a run at step h, before any thread applies it.
+  virtual void prepare(double /*h*/) {}
   // Adds the device's input for step k to the neurons of `thread`.
   virtual void apply(Step k, std::size_t thread, double h, std::uint64_t seed) = 0;
   virtual std::string_view kind() const = 0;
@@ -144,22 +147,29 @@ class Device {
 
 // Independent Poisson spike trains of `rate` into each target, each spike of weight w on
 // one receptor, arriving at the grid points (Burkitt 2006 for its use as background input).
+// The count of each step is drawn by inversion of the Poisson distribution of mean rate h,
+// tabulated once before the run (calx/random/poisson.hpp): one uniform per neuron and step.
 class PoissonInput final : public Device {
  public:
   double rate = 0, weight = 0;
   std::size_t receptor = 0;
   std::string_view kind() const override { return "poisson"; }
+  void prepare(double h) override { table_ = calx::random::PoissonTable(rate * h); }
   void apply(Step k, std::size_t thread, double h, std::uint64_t seed) override {
     if (!active(k, h) || rate <= 0) return;
     const Range r = mine(thread);
     double* in = target->arrivals(k + 1, receptor);
     const double lam = rate * h;
+    const bool tabulated = table_.mean() == lam;  // else the rate changed after prepare()
     for (std::size_t i = r.begin; i < r.end; i++) {
       calx::random::Stream z(seed, static_cast<std::uint32_t>(k), target->first + static_cast<std::uint32_t>(i), tag(Purpose::poisson, index));
-      const auto n = z.poisson(lam);
+      const auto n = tabulated ? table_(z) : z.poisson(lam);
       if (n) in[i] += static_cast<double>(n) * weight;
     }
   }
+
+ private:
+  calx::random::PoissonTable table_;
 };
 
 // Spikes at given times (time indices), into every target, of weight w.
@@ -257,10 +267,22 @@ struct WeightRecorder {
   std::vector<double> mean, sd;          // over the projection's synapses
 };
 
+// Where a run's time went, in seconds: the update of the neurons (devices, flows, recorders of
+// state), the exchange of each window's spikes (gathered and sorted on one thread), their
+// delivery to the synapses (with plasticity's bookkeeping), and the recording of spikes and
+// weights. For the two parallel phases each thread's busy time is kept too; the rest of a
+// phase, its length less a thread's busy time, is that thread waiting for the slowest.
+struct Profile {
+  std::uint64_t windows = 0;
+  double update = 0, exchange = 0, deliver = 0, record = 0;
+  std::vector<double> update_busy, deliver_busy;  // per thread
+};
+
 struct Statistics {
   std::uint64_t spikes = 0, events = 0, steps = 0;
   double wall = 0;     // s spent in run()
   double build = 0;    // s spent building connectivity
+  Profile profile;
 };
 
 // ---- the network ----------------------------------------------------------------------------------------
@@ -592,7 +614,10 @@ inline void Network::prepare() {
   devices_of_.assign(pops_.size(), {});
   recorders_of_.assign(pops_.size(), {});
   for (auto& pr : projs_) outgoing_[pr->source->index].push_back(pr.get());
-  for (auto& d : devices_) devices_of_[d->target->index].push_back(d.get());
+  for (auto& d : devices_) {
+    devices_of_[d->target->index].push_back(d.get());
+    d->prepare(h());
+  }
   for (auto& r : state_recorders_) {
     recorders_of_[r->population->index].push_back(r.get());
     r->owned.resize(T);
@@ -698,21 +723,33 @@ inline void Network::run(double duration) {
   std::vector<std::vector<Spike>> produced(T);
   std::vector<std::uint64_t> events(T, 0);
   std::vector<Spike> all;
+  using clock = std::chrono::steady_clock;
+  const auto seconds = [](clock::time_point a, clock::time_point b) { return std::chrono::duration<double>(b - a).count(); };
+  Profile& prof = stats_.profile;
+  if (prof.update_busy.size() != T) { prof.update_busy.assign(T, 0); prof.deliver_busy.assign(T, 0); }
+  std::vector<double> busy(T, 0);
   while (now_ < end) {
     const Step w = std::min<Step>(d_min_, end - now_);
     const Step from = now_;
+    const auto a = clock::now();
     pool_->run([&](std::size_t t) {
+      const auto b0 = clock::now();
       for (Step k = from; k < from + w; k++)
         for (auto& p : pops_) {
           for (Device* d : devices_of_[p->index]) d->apply(k, t, h(), settings_.seed);
           p->update(k, t, produced[t]);
           for (StateRecorder* r : recorders_of_[p->index]) sample(*r, t, k + 1);
         }
+      busy[t] = seconds(b0, clock::now());
     });
+    const auto b = clock::now();
+    for (std::size_t t = 0; t < T; t++) prof.update_busy[t] += busy[t];
     all.clear();
     for (auto& v : produced) { all.insert(all.end(), v.begin(), v.end()); v.clear(); }
     std::sort(all.begin(), all.end());
+    const auto c = clock::now();
     pool_->run([&](std::size_t t) {
+      const auto b0 = clock::now();
       // The postsynaptic spikes of the window, for the plastic synapses onto them, first.
       for (const Spike& sp : all) {
         const std::size_t pi = static_cast<std::size_t>(std::upper_bound(pops_.begin(), pops_.end(), sp.gid,
@@ -730,7 +767,10 @@ inline void Network::run(double duration) {
           while (!hst.empty() && hst.front().used >= p->plastic_in[i]) hst.pop_front();
         }
       }
+      busy[t] = seconds(b0, clock::now());
     });
+    const auto d = clock::now();
+    for (std::size_t t = 0; t < T; t++) prof.deliver_busy[t] += busy[t];
     for (auto& r : spike_recorders_) {
       const Gid lo = r->population->first + static_cast<Gid>(r->first), hi = lo + static_cast<Gid>(r->count);
       for (const Spike& sp : all) if (sp.gid >= lo && sp.gid < hi) r->spikes.push_back(sp);
@@ -747,6 +787,12 @@ inline void Network::run(double duration) {
       r->mean.push_back(n ? s1 / n : 0);
       r->sd.push_back(n > 1 ? std::sqrt(std::max(0.0, (s2 - s1 * s1 / n) / (n - 1))) : 0);
     }
+    const auto e = clock::now();
+    prof.update += seconds(a, b);
+    prof.exchange += seconds(b, c);
+    prof.deliver += seconds(c, d);
+    prof.record += seconds(d, e);
+    prof.windows++;
   }
   for (auto e : events) stats_.events += e;
   stats_.steps += static_cast<std::uint64_t>(steps);

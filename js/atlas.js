@@ -166,4 +166,10 @@ export const CITATIONS = {
   DalibardCastinMolmer1992: 'Dalibard, J., Castin, Y. and Mølmer, K. (1992), Wave-function approach to dissipative processes in quantum optics, Phys. Rev. Lett. 68, 580-583.',
   Carmichael1993: 'Carmichael, H. (1993), An Open Systems Approach to Quantum Optics, Springer.',
   PlenioKnight1998: 'Plenio, M. B. and Knight, P. L. (1998), The quantum-jump approach to dissipative dynamics in quantum optics, Rev. Mod. Phys. 70, 101-144.',
+  SoftkyKoch1993: 'Softky, W. R. and Koch, C. (1993), The highly irregular firing of cortical cells is inconsistent with temporal integration of random EPSPs, J. Neurosci. 13, 334-350.',
+  Holt1996: 'Holt, G. R., Softky, W. R., Koch, C. and Douglas, R. J. (1996), Comparison of discharge variability in vitro and in vivo in cat visual cortex neurons, J. Neurophysiol. 75, 1806-1814.',
+  ShinomotoShimaTanji2003: 'Shinomoto, S., Shima, K. and Tanji, J. (2003), Differences in spiking patterns among cortical neurons, Neural Comput. 15, 2823-2842.',
+  Fano1947: 'Fano, U. (1947), Ionization yield of radiations. II. The fluctuations of the number of ions, Phys. Rev. 72, 26-29.',
+  Golomb2007: 'Golomb, D. (2007), Neuronal synchrony measures, Scholarpedia 2(1), 1347.',
+  Welch1967: 'Welch, P. D. (1967), The use of fast Fourier transform for the estimation of power spectra: a method based on time averaging over short, modified periodograms, IEEE Trans. Audio Electroacoust. 15, 70-73.',
 };

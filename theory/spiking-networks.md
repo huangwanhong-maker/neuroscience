@@ -9,7 +9,8 @@ implemented-by:
   - domains/neuroscience/snn/include/neuroscience/snn/theory.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/models/excitability.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/models/quantum.hpp
-references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011, Hodgkin1948, RinzelErmentrout1998, Goebel2012, Izhikevich2007, WangBuzsaki1996, MorrisLecar1981, FitzHugh1961, Nagumo1962, Higuchi2024, GoriniKossakowskiSudarshan1976, Lindblad1976, DalibardCastinMolmer1992, Carmichael1993, PlenioKnight1998]
+  - domains/neuroscience/snn/include/neuroscience/snn/analysis.hpp
+references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011, Hodgkin1948, RinzelErmentrout1998, Goebel2012, Izhikevich2007, WangBuzsaki1996, MorrisLecar1981, FitzHugh1961, Nagumo1962, Higuchi2024, GoriniKossakowskiSudarshan1976, Lindblad1976, DalibardCastinMolmer1992, Carmichael1993, PlenioKnight1998, SoftkyKoch1993, Holt1996, ShinomotoShimaTanji2003, Fano1947, Golomb2007, Welch1967]
 ---
 
 # Networks of Spiking Neurons, Exactly and in Parallel
@@ -124,7 +125,20 @@ A detection is thus an escape event whose cumulative hazard is Λ(t) = −ln |c(
 
 On resonance S has a closed form (Plenio and Knight 1998), against which the first photons are checked; the identity ∫₀^∞ S dt = 1/R, between the unravelling and the master equation, is checked in physis. An input spike is a pulse, a rotation exp(−iθσ_x/2) of the state: θ = π excites it, after which the photon follows at the rate γ, and θ = 2π returns it to |g⟩ with its sign changed.
 
-## 9. What the Checks Show
+## 9. Describing Activity
+
+A run's spikes are described, population by population, over a window [t₀, t₁) of length T, by statistics whose values for two reference processes are known: a Poisson process, whose intervals are independent and exponential, and a clock.
+
+- **Irregularity.** For a neuron's intervals I₁, …, Iₙ, the coefficient of variation CV = sd(I)/mean(I) is 1 for Poisson and 0 for a clock (Softky and Koch 1993; Holt et al. 1996). It mixes irregularity with slow changes of rate, which the local variation separates: LV = 3/(n − 1) Σᵢ ((Iᵢ − Iᵢ₊₁)/(Iᵢ + Iᵢ₊₁))², again 1 for Poisson and 0 for a clock, compares only neighbouring intervals (Shinomoto, Shima and Tanji 2003).
+- **Count variability.** The Fano factor (Fano 1947) of a neuron's counts in windows of length W, Var/mean, is 1 for Poisson at every W.
+- **Synchrony.** With cᵢ(t) the counts of neuron i in bins of length B and c̄ = (1/N) Σ cᵢ, Golomb's measure (2007) is χ² = Var_t(c̄) / ((1/N) Σᵢ Var_t(cᵢ)). For neurons that fire together χ = 1; for independent ones Var(c̄) = (1/N²) Σ Var(cᵢ), so χ = 1/√N. The mean Pearson correlation of counts in windows of W over a sample of pairs complements it.
+- **Rhythm.** The population's rate, in bins of b, has a power spectral density, estimated by Welch's method (1967) from half-overlapping Hann-windowed segments; its peak is the population's rhythm, the fast oscillation of Brunel's state SI near 180 Hz.
+
+*Remark.* Each statistic is checked in the module against its reference processes: independent Poisson trains (CV, LV and Fano 1 within 1 %, χ√N = 1 within 1 %, correlation 0), clocks (CV, LV and Fano 0), one train shared by every neuron (χ = 1 and correlation 1 exactly), and a population whose rate oscillates at 40 Hz (the peak within a bin).
+
+**The engine's profile.** A run advances in windows of the shortest delay (Proposition 2); each window updates the neurons on every thread, exchanges the window's spikes on one, and delivers them on every thread. The engine times each phase and each thread's share of it; the rest of a parallel phase is a thread waiting for the slowest. The profile showed the Poisson input of Brunel's network to take most of the update (each neuron's count was drawn by multiplying uniforms, with an exponential each time), and the count is now drawn by inverting a table of the Poisson distribution, one uniform per neuron and step: the network runs 1.4 times faster on one thread and 1.5 times on eight.
+
+## 10. What the Checks Show
 
 - Exactness: postsynaptic potentials and currents against closed forms to 10⁻¹² of their peaks; a population and physis's simulation of one neuron fire at the same steps.
 - Firing patterns of the adaptive exponential model (Brette and Gerstner 2005) as Naud et al. (2008) list them, and of Izhikevich's model (2003); the Hodgkin–Huxley neuron (1952) at rest at −65.000 mV and firing at 69 Hz under 10 µA/cm² with two integrators.
@@ -133,4 +147,5 @@ On resonance S has a closed form (Plenio and Knight 1998), against which the fir
 - Classes of excitability: Izhikevich's 2007 model, Wang and Buzsáki's interneuron and Morris and Lecar's SNIC set are silent 0.2 % below I_SN, from (5) or from a scan of I_ss, fire 0.2 % above it, and halve their period when the excess current is multiplied by four, as (4) predicts, to within 10 %; Morris and Lecar's Hopf set and FitzHugh and Nagumo's model return from a small kick 1 % below I_H, from the Jacobian or from (6), are driven into firing 1 % above it, and begin at a rate bounded away from zero.
 - The adaptive LIF's resonant free response against the exponential of its system to 4 × 10⁻¹³; the GIF neuron without kernels firing spike for spike as the escape-noise LIF under the same seed, and its kernels against their closed forms; the BRF neuron exact while its refractoriness is still, of second order while it decays, rotating without loss for 10 s when undamped, and selective for its own frequency.
 - Quantum emitters: their first photons against the closed-form waiting time, exact on the grid; their rate against Proposition 6; the average of 20,000 trajectories against the master equation; pulses of π and 2π.
+- The statistics of activity against Poisson trains, clocks, shared trains and an oscillating population; the engine's profile accounting for its run to 5 %.
 - Neurons in white noise at 2.7 % below (2), as the grid predicts; Brunel's network (g = 5, η = 2, C_E = 500) at 55.1 Hz against its self-consistent 54.9 Hz; quadratic neurons at 126 Hz against the 128 Hz of (3).
