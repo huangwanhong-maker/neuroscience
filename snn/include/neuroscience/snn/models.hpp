@@ -13,6 +13,7 @@
 #include "models/excitability.hpp"
 #include "models/integrate_and_fire.hpp"
 #include "models/nonlinear.hpp"
+#include "models/quantum.hpp"
 #include "population.hpp"
 
 namespace neuroscience::snn {
@@ -20,7 +21,8 @@ namespace neuroscience::snn {
 using AllModels = std::tuple<models::Parrot, models::LifPscDelta, models::LifPscExp, models::LifPscAlpha, models::LifCondExp,
                              models::Alif, models::Adlif, models::Glif, models::Mat2, models::LifEscape, models::Gif, models::Adex,
                              models::Izhikevich, models::Izhikevich2007, models::HodgkinHuxley, models::WangBuzsaki,
-                             models::MorrisLecar, models::FitzhughNagumo, models::Qif, models::ResonateAndFire, models::Brf>;
+                             models::MorrisLecar, models::FitzhughNagumo, models::Qif, models::ResonateAndFire, models::Brf,
+                             models::QuantumEmitter>;
 
 namespace detail {
 

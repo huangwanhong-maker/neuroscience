@@ -35,6 +35,7 @@
 | `qif` | Quadratic integrate-and-fire, normalised | exact (closed-form flow) | Ermentrout and Kopell 1986; Montbrió, Pazó and Roxin 2015 |
 | `resonate_and_fire` | A damped oscillator firing on its imaginary part | exact | Izhikevich 2001 |
 | `brf` | Balanced resonate-and-fire: no reset; its refractoriness raises the threshold and deepens the damping | exact flow; the input of second order while the refractoriness decays | Higuchi, Kairat, Bohte and Otte 2024 |
+| `quantum_emitter` | A driven two-level emitter along an exact quantum trajectory of its master equation; its detected photons are its spikes, input spikes are pulses that rotate it | exact (closed-form 2 × 2 exponential; exact probability of a detection per step) | Dalibard, Castin and Mølmer 1992; Carmichael 1993 |
 
 The original papers are cited in each model's source (`include/neuroscience/snn/models/`) and in its `citation`, which `snn models` reports.
 
@@ -80,10 +81,11 @@ The results give times in seconds and quantities in SI units, each recorded comp
 
 ## 5. Checks and Performance
 
-Six check programs on calx `verification`, built and run by the domain's suite (`node domains/neuroscience/tests/run-tests.mjs`) through CMake, here or in WSL:
+Seven check programs on calx `verification`, built and run by the domain's suite (`node domains/neuroscience/tests/run-tests.mjs`) through CMake, here or in WSL:
 
 - **models** (32): postsynaptic potentials and currents against closed forms (to 1e-12 of their peak); periods on the grid against first passage; a population against physis's simulation of one neuron, spike for spike; the firing patterns of Naud et al. 2008 (tonic, adapting, initial burst, regular bursting) and Izhikevich 2003 (regular, fast, chattering); Hodgkin and Huxley at rest at −65.000 mV and firing at 69 Hz under two integrators; the QIF period against its closed form; resonate-and-fire, GLIF and escape noise against theirs; the adaptive LIF's resonant free response against the exponential of its system; GIF spike for spike as `lif_escape` without its kernels, and its kernels against their closed forms; BRF exact while its refractoriness is still and of second order while it decays, undamped without loss for 10 s, and selective for its frequency.
 - **excitability** (15): the classes of excitability (Hodgkin 1948; Rinzel and Ermentrout 1998). Class 1, for `izhikevich_2007`, `wang_buzsaki` and `morris_lecar` with the SNIC parameters: silent 0.2 % below the saddle-node of the steady-state current, firing 0.2 % above it, and the period halved by four times the excess current. Class 2, for `morris_lecar` with the Hopf parameters and `fitzhugh_nagumo`: a kicked resting state returns 1 % below the Hopf current computed from the model's Jacobian (and from the closed form for FitzHugh–Nagumo) and fires 1 % above it, at a rate bounded away from zero; each broad spike counted once; population and physis spike for spike.
+- **quantum** (8): the first photons of 20,000 emitters against the closed-form waiting time (Kolmogorov–Smirnov), exact on the grid; the grid's mean interval against the master equation's rate (Proposition 6 of the theory); the stationary rate; the average of 20,000 trajectories against the master equation; pulses of π and 2π.
 - **network** (11): delays; connection rules; Poisson input; uniform projections against explicit ones; the same spikes on 1, 4 and 7 threads.
 - **plasticity** (8): pair and triplet STDP against their sums over pairs and triplets of spikes (to float precision); short-term plasticity at its steady states; the pruning of the history.
 - **theory** (8): Siegert's rate against neurons in white noise (2.7 % below, as a discrete grid makes it); Brunel's network against its self-consistent rate (55.1 Hz against 54.9 Hz); QIF neurons against the exact mean field of Montbrió, Pazó and Roxin (126 Hz against 128 Hz).
@@ -106,7 +108,7 @@ calx (`random`, `linalg`, `integrators`, `special_functions`, `quadrature`, `sol
 
 ## 8. Open Questions
 
-1. **Models from the survey of recent work** still to be written (multi-compartment and dendritic neurons, neural masses, the Loihi neurons, the Poisson GLM; learning rules such as e-prop, three-factor and burst-dependent plasticity), and quantum neurons: open-system (Lindblad) neurons, whose Bloch vectors flow linearly and whose jumps are escape events, and Ising-like networks.
+1. **Models from the survey of recent work** still to be written (multi-compartment and dendritic neurons, neural masses, the Loihi neurons, the Poisson GLM; learning rules such as e-prop, three-factor and burst-dependent plasticity), and more quantum neurons: open quantum Hopfield networks (Rotondo et al. 2018), whose jump rates depend on the other spins, and Ising-like networks.
 2. **Precise spike times** between grid points (Hanuschkin et al. 2010) for models where they matter.
 3. **Kernels in calx's IR**, so that the update and the delivery run on accelerators.
 4. **Python bindings** (nanobind), beside the command line.

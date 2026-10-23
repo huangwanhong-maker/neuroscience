@@ -13,4 +13,4 @@ A running record, for readers, of what each commit made possible or better. It i
 
 | Date | Commits |
 |---|---|
-| [2026-10-23](2026-10-23.md) | Seven new neurons; networks of spiking neurons in C++; signals of the brain |
+| [2026-10-23](2026-10-23.md) | A quantum neuron; seven new neurons; networks of spiking neurons in C++; signals of the brain |

@@ -12,7 +12,8 @@
 //      weight, except a held component, which discards them (NEST's convention), and
 //      settles (a model that counts upward crossings re-arms its guard);
 //   3. if it is not dwelling and its state lies in the guard (or, for an escape-noise model,
-//      with probability 1 - exp(-rho h)), fires at t_{k+1}: it jumps and dwells for t_ref.
+//      with probability 1 - exp(-rho h), or 1 - exp(-(Lambda_{k+1} - Lambda_k)) if it gives its
+//      cumulative hazard), fires at t_{k+1}: it jumps and dwells for t_ref.
 // This is physis::dynamics::simulate's order, with the arrivals of step 2 added; a neuron of
 // a population and the same neuron simulated alone agree exactly.
 //
@@ -196,6 +197,8 @@ class PopulationOf final : public Population {
       const double u = current[i] + (has_bias ? bias[i] : 0.0);
       current[i] = 0;
       const bool hold = dwell_[i] > 0;
+      double exposure = 0;  // the cumulative hazard at the step's start
+      if constexpr (Cumulative<M>) exposure = M::cumulative_hazard(p, s);
       // 1. the flow
       if constexpr (pd::LinearFlow<M>) {
         (hold ? held_ : free_).apply(s, u);
@@ -220,9 +223,11 @@ class PopulationOf final : public Population {
       } else {
         bool fire;
         if constexpr (Escaping<M>) {
-          const double rho = M::hazard(p, s);
+          double exponent;
+          if constexpr (Cumulative<M>) exponent = M::cumulative_hazard(p, s) - exposure;
+          else exponent = M::hazard(p, s) * h_;
           calx::random::Stream z(seed_, static_cast<std::uint32_t>(k), first + static_cast<std::uint32_t>(i), tag(Purpose::escape, index));
-          fire = z.uniform() < -std::expm1(-rho * h_);
+          fire = z.uniform() < -std::expm1(-exponent);
         } else {
           fire = M::guard(p, s);
         }

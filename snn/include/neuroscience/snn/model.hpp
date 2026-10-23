@@ -17,8 +17,9 @@
 //
 // A model may also define receive() to change how a spike acts (an alpha synapse scales
 // it), advance() to integrate its own flow exactly where it can (the quadratic
-// integrate-and-fire neuron), hazard() to fire by escape noise instead of a guard, and
-// settle() to re-arm a guard that counts upward crossings.
+// integrate-and-fire neuron), hazard() to fire by escape noise instead of a guard (and
+// cumulative_hazard() to fire with the exact probability of a step), and settle() to apply a
+// silent jump after each step (re-arming a guard, renormalising a quantum state).
 
 #pragma once
 
@@ -90,6 +91,15 @@ concept Advancing = requires(const typename M::Params& p, State<M::n>& x, double
 template <class M>
 concept Escaping = requires(const typename M::Params& p, const State<M::n>& x) {
   { M::hazard(p, x) } -> std::convertible_to<double>;
+};
+
+// An escape-noise model may give its cumulative hazard Lambda(x), whose increase over a step
+// is the exact exponent of its survival: it then fires with probability
+// 1 - exp(-(Lambda(x_{k+1}) - Lambda(x_k))) rather than 1 - exp(-rho h) with rho at the step's
+// end (a quantum emitter, whose survival is the squared norm of its state).
+template <class M>
+concept Cumulative = Escaping<M> && requires(const typename M::Params& p, const State<M::n>& x) {
+  { M::cumulative_hazard(p, x) } -> std::convertible_to<double>;
 };
 
 // A model whose spike is an upward crossing re-arms its guard by a silent jump, settle()

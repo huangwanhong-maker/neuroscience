@@ -161,4 +161,9 @@ export const CITATIONS = {
   FitzHugh1961: 'FitzHugh, R. (1961), Impulses and physiological states in theoretical models of nerve membrane, Biophys. J. 1, 445-466.',
   Nagumo1962: 'Nagumo, J., Arimoto, S. and Yoshizawa, S. (1962), An active pulse transmission line simulating nerve axon, Proc. IRE 50, 2061-2070.',
   Higuchi2024: 'Higuchi, S., Kairat, S., Bohte, S. M. and Otte, S. (2024), Balanced resonate-and-fire neurons, Proc. 41st ICML, PMLR 235, 18305-18323.',
+  GoriniKossakowskiSudarshan1976: 'Gorini, V., Kossakowski, A. and Sudarshan, E. C. G. (1976), Completely positive dynamical semigroups of N-level systems, J. Math. Phys. 17, 821-825.',
+  Lindblad1976: 'Lindblad, G. (1976), On the generators of quantum dynamical semigroups, Commun. Math. Phys. 48, 119-130.',
+  DalibardCastinMolmer1992: 'Dalibard, J., Castin, Y. and Mølmer, K. (1992), Wave-function approach to dissipative processes in quantum optics, Phys. Rev. Lett. 68, 580-583.',
+  Carmichael1993: 'Carmichael, H. (1993), An Open Systems Approach to Quantum Optics, Springer.',
+  PlenioKnight1998: 'Plenio, M. B. and Knight, P. L. (1998), The quantum-jump approach to dissipative dynamics in quantum optics, Rev. Mod. Phys. 70, 101-144.',
 };

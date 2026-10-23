@@ -8,7 +8,8 @@ implemented-by:
   - domains/neuroscience/snn/include/neuroscience/snn/synapses.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/theory.hpp
   - domains/neuroscience/snn/include/neuroscience/snn/models/excitability.hpp
-references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011, Hodgkin1948, RinzelErmentrout1998, Goebel2012, Izhikevich2007, WangBuzsaki1996, MorrisLecar1981, FitzHugh1961, Nagumo1962, Higuchi2024]
+  - domains/neuroscience/snn/include/neuroscience/snn/models/quantum.hpp
+references: [RotterDiesmann1999, VanLoan1978, Morrison2005, Morrison2008, Gutig2003, Song2000, vanRossum2000, PfisterGerstner2006, TsodyksMarkram1997, Markram1998, Siegert1951, Brunel2000, BrunelChance2001, MontbrioPazoRoxin2015, BretteGerstner2005, Naud2008, Izhikevich2003, HodgkinHuxley1952, Salmon2011, Hodgkin1948, RinzelErmentrout1998, Goebel2012, Izhikevich2007, WangBuzsaki1996, MorrisLecar1981, FitzHugh1961, Nagumo1962, Higuchi2024, GoriniKossakowskiSudarshan1976, Lindblad1976, DalibardCastinMolmer1992, Carmichael1993, PlenioKnight1998]
 ---
 
 # Networks of Spiking Neurons, Exactly and in Parallel
@@ -109,7 +110,21 @@ $$v^* = -\sqrt{1 - \varepsilon b}, \qquad I_H = \frac{v^* + a}{b} - v^* + \frac{
 
 *Remark (counting broad spikes).* A spike of a conductance model is the upward crossing of V_spike. A guard {V ≥ V_spike} tested on the grid would count every step of a broad spike, so the guard is given hysteresis by a discrete component, armed ∈ {0, 1}: G = {V ≥ V_spike, armed = 1}, the jump sets armed = 0, and a silent jump, one that emits no event, sets armed = 1 whenever V < V_rearm. This is a hybrid system with two jump sets (Goebel, Sanfelice and Teel 2012), only one of them observed; physis's simulation and the network apply the silent jump at the same point of the step, so that they still agree.
 
-## 8. What the Checks Show
+## 8. Quantum Neurons
+
+An open quantum system's density matrix obeys the GKSL master equation, ρ′ = −i[H, ρ] + Σ_k (L_k ρ L_k† − {L_k†L_k, ρ}/2) (Gorini, Kossakowski and Sudarshan 1976; Lindblad 1976). For a driven two-level emitter, with H = −Δ|e⟩⟨e| + (Ω/2)(|e⟩⟨g| + |g⟩⟨e|) and L = √γ σ₋, the equation is affine on the Bloch vector (physis `quantum`), and its stationary rate of emission is R = γρ_ee = γ(Ω²/4)/(Δ² + γ²/4 + Ω²/2).
+
+**Definition 3 (quantum trajectory).** With every jump detected, the master equation unravels into pure states (Dalibard, Castin and Mølmer 1992; Carmichael 1993): between detections the unnormalised amplitudes evolve by c′ = −iH_eff c, H_eff = H − (iγ/2)|e⟩⟨e|, and |c(t)|² is the probability that none has occurred; at a detection the state jumps to |g⟩. The average over trajectories of |c⟩⟨c|/|c|² is ρ.
+
+A detection is thus an escape event whose cumulative hazard is Λ(t) = −ln |c(t)|², exactly. The quantum emitter of the module carries its normalised amplitudes and Λ₀, renormalising after each step (a silent jump) and moving −ln |c|² into Λ₀, so that Λ = Λ₀ − ln |c|² is unchanged; it fires within a step with probability 1 − exp(−ΔΛ), exactly, and its state is advanced by exp(−iH_eff h), a 2 × 2 exponential computed in closed form.
+
+**Proposition 6 (the grid and the master equation).** From |g⟩ let S(t) = |c(t)|². On the grid the interval between detections is j steps with probability S((j − 1)h) − S(jh), so the mean interval is h Σ_{j≥0} S(jh) = 1/R + h/2 + O(h⁴).
+
+*Proof.* The photons form a renewal process, each interval beginning in |g⟩, so the stationary rate is the inverse mean interval ∫₀^∞ S dt, which is therefore 1/R. By Euler and Maclaurin, h Σ_{j≥0} S(jh) = ∫₀^∞ S dt + hS(0)/2 − h²S′(0)/12 + O(h⁴), with S(0) = 1 and S′(0) = −γ|c_e(0)|² = 0. ∎
+
+On resonance S has a closed form (Plenio and Knight 1998), against which the first photons are checked; the identity ∫₀^∞ S dt = 1/R, between the unravelling and the master equation, is checked in physis. An input spike is a pulse, a rotation exp(−iθσ_x/2) of the state: θ = π excites it, after which the photon follows at the rate γ, and θ = 2π returns it to |g⟩ with its sign changed.
+
+## 9. What the Checks Show
 
 - Exactness: postsynaptic potentials and currents against closed forms to 10⁻¹² of their peaks; a population and physis's simulation of one neuron fire at the same steps.
 - Firing patterns of the adaptive exponential model (Brette and Gerstner 2005) as Naud et al. (2008) list them, and of Izhikevich's model (2003); the Hodgkin–Huxley neuron (1952) at rest at −65.000 mV and firing at 69 Hz under 10 µA/cm² with two integrators.
@@ -117,4 +132,5 @@ $$v^* = -\sqrt{1 - \varepsilon b}, \qquad I_H = \frac{v^* + a}{b} - v^* + \frac{
 - Plasticity against its defining sums, to the precision of the stored weights.
 - Classes of excitability: Izhikevich's 2007 model, Wang and Buzsáki's interneuron and Morris and Lecar's SNIC set are silent 0.2 % below I_SN, from (5) or from a scan of I_ss, fire 0.2 % above it, and halve their period when the excess current is multiplied by four, as (4) predicts, to within 10 %; Morris and Lecar's Hopf set and FitzHugh and Nagumo's model return from a small kick 1 % below I_H, from the Jacobian or from (6), are driven into firing 1 % above it, and begin at a rate bounded away from zero.
 - The adaptive LIF's resonant free response against the exponential of its system to 4 × 10⁻¹³; the GIF neuron without kernels firing spike for spike as the escape-noise LIF under the same seed, and its kernels against their closed forms; the BRF neuron exact while its refractoriness is still, of second order while it decays, rotating without loss for 10 s when undamped, and selective for its own frequency.
+- Quantum emitters: their first photons against the closed-form waiting time, exact on the grid; their rate against Proposition 6; the average of 20,000 trajectories against the master equation; pulses of π and 2π.
 - Neurons in white noise at 2.7 % below (2), as the grid predicts; Brunel's network (g = 5, η = 2, C_E = 500) at 55.1 Hz against its self-consistent 54.9 Hz; quadratic neurons at 126 Hz against the 128 Hz of (3).
